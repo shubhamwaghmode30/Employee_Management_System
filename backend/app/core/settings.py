@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     )
 
     app_env: str = Field(default="dev", alias="APP_ENV")
-    database_url: str = Field(default="sqlite:///./employee_management_dev.db", alias="DATABASE_URL")
+    database_url: str = Field(
+        default="sqlite:///./employee_management_dev.db",
+        alias="DATABASE_URL",
+    )
     jwt_secret: str = Field(
         default="replace-with-a-long-random-secret",
         alias="JWT_SECRET",
@@ -34,20 +37,27 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, value: str | tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    def parse_cors_origins(
+        cls,
+        value: str | tuple[str, ...] | list[str],
+    ) -> tuple[str, ...]:
         if isinstance(value, str):
             stripped = value.strip()
             if stripped.startswith("["):
                 parsed_json = json.loads(stripped)
                 if not isinstance(parsed_json, list):
-                    raise ValueError("CORS_ORIGINS JSON must be an array of origin strings")
+                    raise ValueError(
+                        "CORS_ORIGINS JSON must be an array of origin strings",
+                    )
                 origins: list[str] = []
                 for origin in parsed_json:
                     if not isinstance(origin, str):
                         raise ValueError("each CORS origin must be a string")
                     origins.append(origin)
                 return tuple(origins)
-            return tuple(origin.strip() for origin in stripped.split(",") if origin.strip())
+            return tuple(
+                origin.strip() for origin in stripped.split(",") if origin.strip()
+            )
         if isinstance(value, list):
             return tuple(value)
         return value
