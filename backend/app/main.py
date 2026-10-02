@@ -5,7 +5,10 @@ from app.core.settings import get_settings
 
 
 def create_app() -> FastAPI:
-    """Build the ASGI application. Settings are loaded so boot fails fast on invalid env."""
+    """Build the ASGI application.
+
+    Settings are loaded so boot fails fast on invalid env.
+    """
 
     get_settings()
     application = FastAPI(
