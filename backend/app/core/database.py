@@ -1,15 +1,14 @@
 """Database engine, session factory, and declarative base.
 
 SQLite is used for development. For AWS RDS PostgreSQL, set DATABASE_URL to a
-PostgreSQL connection string and optionally add "psycopg[binary]" to
-pyproject.toml dev extras for the psycopg driver.
+PostgreSQL connection string and add "psycopg[binary]" to runtime dependencies
+when moving to production.
 
 Example PostgreSQL URL:
     postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME
 """
 
 from collections.abc import Generator
-from contextlib import contextmanager
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -45,7 +44,6 @@ engine = _create_engine()
 SessionLocal = sessionmaker(bind=engine)
 
 
-@contextmanager
 def get_db() -> Generator[Session, None, None]:
     """Dependency-injectable database session.
 
