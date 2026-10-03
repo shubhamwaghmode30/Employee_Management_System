@@ -133,7 +133,7 @@ python scripts/check_forbidden_types.py
 
 All checks must pass before committing changes.
 
-## Roadmap
+## Implementations
 
 - [x] Project scaffolding and git setup
 - [x] FastAPI app with settings and health endpoint
@@ -143,25 +143,3 @@ All checks must pass before committing changes.
 - [x] Role model
 - [x] Polymorphic Employee model
 - [x] Initial migration
-- [ ] Repository pattern implementation
-- [ ] Pydantic schemas for API requests/responses
-- [ ] Seed script for roles and bootstrap admin
-- [ ] Password hashing with argon2
-- [ ] JWT token service
-- [ ] Authentication service
-- [ ] Authorization dependencies
-- [ ] Auth routes (login, refresh, me)
-- [ ] Employee service with business rules
-- [ ] Employee CRUD endpoints
-- [ ] Global error handling
-- [ ] Postman collection and environment
-- [ ] React Expo frontend scaffold
-- [ ] Frontend structure and theme
-- [ ] Typed API client
-- [ ] Token storage abstraction
-- [ ] Auth state and route guards
-- [ ] Login screen
-- [ ] Responsive app shell
-- [ ] Employee directory dashboard
-- [ ] Employee detail and admin actions
-- [ ] Final documentation
