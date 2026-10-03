@@ -1,25 +1,22 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { createMockEmployeeDataSource } from '../../../features/employees/mock-employee-data-source';
+import { EmployeeDirectory } from '../../../features/employees/EmployeeDirectory';
 
-import { colors, spacing, typography } from '../../../theme';
+// Mock data until the employee API is merged. To switch to the real backend, replace this with
+// createApiEmployeeDataSource(apiClient) from features/employees/api-employee-data-source.
+const employeeDataSource = createMockEmployeeDataSource({ latencyMs: 400 });
 
 export default function EmployeesScreen() {
+  // Create, edit and delete flows arrive with the employee form and delete dialog (task 3c).
+  function handleCreateEmployee() {}
+  function handleEditEmployee() {}
+  function handleDeleteEmployee() {}
+
   return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
-        Employees
-      </Text>
-    </View>
+    <EmployeeDirectory
+      dataSource={employeeDataSource}
+      onCreateEmployee={handleCreateEmployee}
+      onEditEmployee={handleEditEmployee}
+      onDeleteEmployee={handleDeleteEmployee}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: spacing.lg,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSize.xxl,
-    fontWeight: typography.fontWeight.bold,
-  },
-});

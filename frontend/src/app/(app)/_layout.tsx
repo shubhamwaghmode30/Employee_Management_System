@@ -1,5 +1,6 @@
 import { Slot } from 'expo-router';
 
+import { SessionUserProvider } from '../../auth/session-user-context';
 import { AppShell } from '../../components/AppShell';
 import type { SessionUser } from '../../types/session-user';
 
@@ -17,8 +18,10 @@ export default function AppLayout() {
   }
 
   return (
-    <AppShell user={previewUser} onLogout={handleLogout}>
-      <Slot />
-    </AppShell>
+    <SessionUserProvider user={previewUser}>
+      <AppShell user={previewUser} onLogout={handleLogout}>
+        <Slot />
+      </AppShell>
+    </SessionUserProvider>
   );
 }
