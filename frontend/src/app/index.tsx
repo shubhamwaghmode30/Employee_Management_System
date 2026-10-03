@@ -1,28 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
-import { colors, spacing, typography } from '../theme';
-
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
-        Employee Management System
-      </Text>
-    </View>
-  );
+export default function IndexRoute() {
+  return <Redirect href="/employees" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.semibold,
-  },
-});
