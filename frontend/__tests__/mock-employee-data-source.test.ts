@@ -25,13 +25,22 @@ describe('createMockEmployeeDataSource', () => {
   });
 
   it.each([
-    ['name', 'priya sharma', 'Priya'],
-    ['email', 'kenji.tanaka@', 'Kenji'],
-    ['employee code', 'ct0005', 'Sofia'],
+    ['first name', 'PRIYA', 'Priya'],
+    ['last name', 'tanaka', 'Kenji'],
+    ['email', 'sofia.rossi@', 'Sofia'],
   ])('searches by %s, ignoring case', async (_field, q, expectedFirstName) => {
     const page = await listEmployees({ page: 1, page_size: 10, q });
 
     expect(page.items.map((employee) => employee.first_name)).toEqual([expectedFirstName]);
+  });
+
+  it.each([
+    ['employee code', 'CT0005'],
+    ['full name', 'priya sharma'],
+  ])('does not match on %s, like the backend search', async (_field, q) => {
+    const page = await listEmployees({ page: 1, page_size: 10, q });
+
+    expect(page.total).toBe(0);
   });
 
   it('filters by department and active status together', async () => {

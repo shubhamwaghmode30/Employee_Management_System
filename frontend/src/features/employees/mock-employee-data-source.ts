@@ -57,10 +57,9 @@ function matchesParams(employee: Employee, { q, department, is_active }: Employe
   if (q === undefined) {
     return true;
   }
+  // Same fields as EmployeeRepository.search: each matched on its own, case-insensitively.
   const searchTerm = q.toLowerCase();
-  return [
-    `${employee.first_name} ${employee.last_name}`,
-    employee.email,
-    employee.employee_code,
-  ].some((value) => value.toLowerCase().includes(searchTerm));
+  return [employee.first_name, employee.last_name, employee.email].some((value) =>
+    value.toLowerCase().includes(searchTerm),
+  );
 }

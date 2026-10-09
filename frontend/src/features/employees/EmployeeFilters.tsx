@@ -32,7 +32,7 @@ export function EmployeeFilters({
     <View style={styles.container}>
       <TextInput
         accessibilityLabel="Search employees"
-        placeholder="Search by name, email or employee code"
+        placeholder="Search by first name, last name or email"
         placeholderTextColor={colors.textSecondary}
         value={searchText}
         onChangeText={onSearchTextChange}
