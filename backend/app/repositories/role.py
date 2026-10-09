@@ -1,7 +1,5 @@
 """Repository for Role model operations."""
 
-from typing import cast
-
 from sqlalchemy.orm import Session
 
 from app.domain.primitives import RoleName
@@ -19,5 +17,8 @@ class RoleRepository(SqlAlchemyRepository[Role]):
     def get_by_name(self, name: RoleName) -> Role | None:
         """Retrieve a role by its name."""
         stmt = self._base_query().where(Role.name == name)
-        result = self.session.scalars(stmt).first()
-        return cast(Role | None, result)
+        return self.session.scalars(stmt).first()
+
+    def get_by_id(self, id: int | str) -> Role | None:
+        """Retrieve a role by ID."""
+        return self.session.get(Role, id)
