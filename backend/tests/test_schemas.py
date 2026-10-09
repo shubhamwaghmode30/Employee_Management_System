@@ -29,6 +29,8 @@ class TestEmployeeCreate:
             "department": "Engineering",
             "job_title": "Software Engineer",
             "hire_date": datetime.now(UTC),
+            "role_id": 1,
+            "password": "SecurePass123",
             "annual_salary": Decimal("75000.00"),
         }
         employee = EmployeeCreate(**data)
@@ -46,6 +48,8 @@ class TestEmployeeCreate:
             "department": "HR",
             "job_title": "HR Manager",
             "hire_date": datetime.now(UTC),
+            "role_id": 2,
+            "password": "SecurePass123",
             "hourly_rate": Decimal("50.00"),
         }
         employee = EmployeeCreate(**data)
@@ -62,6 +66,8 @@ class TestEmployeeCreate:
             "department": "Engineering",
             "job_title": "Software Engineer",
             "hire_date": datetime.now(UTC),
+            "role_id": 1,
+            "password": "SecurePass123",
         }
         with pytest.raises(ValidationError):
             FullTimeEmployeeCreate(**data)
@@ -76,6 +82,8 @@ class TestEmployeeCreate:
             "department": "HR",
             "job_title": "HR Manager",
             "hire_date": datetime.now(UTC),
+            "role_id": 2,
+            "password": "SecurePass123",
         }
         with pytest.raises(ValidationError):
             ContractEmployeeCreate(**data)
@@ -91,9 +99,11 @@ class TestEmployeeCreate:
             "department": "Engineering",
             "job_title": "Software Engineer",
             "hire_date": datetime.now(UTC),
+            "role_id": 1,
+            "password": "SecurePass123",
             "annual_salary": Decimal("-1000.00"),
         }
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             EmployeeCreate(**data)
 
     def test_invalid_email_raises_error(self) -> None:
@@ -107,9 +117,11 @@ class TestEmployeeCreate:
             "department": "Engineering",
             "job_title": "Software Engineer",
             "hire_date": datetime.now(UTC),
+            "role_id": 1,
+            "password": "SecurePass123",
             "annual_salary": Decimal("75000.00"),
         }
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             EmployeeCreate(**data)
 
 
@@ -144,6 +156,8 @@ class TestFullTimeEmployeeCreate:
             department="Engineering",
             job_title="Software Engineer",
             hire_date=datetime.now(UTC),
+            role_id=1,
+            password="SecurePass123",
             annual_salary=Decimal("75000.00"),
         )
         assert employee.employment_type == EmploymentType.FULL_TIME
@@ -162,6 +176,8 @@ class TestContractEmployeeCreate:
             department="HR",
             job_title="HR Manager",
             hire_date=datetime.now(UTC),
+            role_id=2,
+            password="SecurePass123",
             hourly_rate=Decimal("50.00"),
         )
         assert employee.employment_type == EmploymentType.CONTRACT
