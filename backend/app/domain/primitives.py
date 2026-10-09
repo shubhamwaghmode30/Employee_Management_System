@@ -96,3 +96,11 @@ class AuthorizationError(Exception):
     def __init__(self, required_permission: Permission) -> None:
         self.required_permission = required_permission
         super().__init__(f"Permission '{required_permission}' is required")
+
+
+class InvalidTokenError(Exception):
+    """Raised when a token is invalid, expired, or tampered with."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(f"Invalid token: {reason}")
