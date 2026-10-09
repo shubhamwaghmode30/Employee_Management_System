@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base
 from app.core.security import Argon2PasswordHasher
 from app.core.tokens import JwtTokenService
-from app.domain.primitives import EmploymentType, RoleName
+from app.domain.primitives import AuthenticationError, EmploymentType, RoleName
 from app.models.employee import FullTimeEmployee
 from app.models.role import Role
 from app.repositories.employee import EmployeeRepository
@@ -117,7 +117,7 @@ def test_login_wrong_password_raises_error(
     role_repo = RoleRepository(db_session)
     auth_service = AuthService(employee_repo, role_repo, hasher, token_service)
 
-    with pytest.raises(ValueError, match="Invalid email or password"):
+    with pytest.raises(AuthenticationError, match="Invalid email or password"):
         auth_service.login("john@example.com", "wrong-password")
 
 
@@ -150,7 +150,7 @@ def test_login_inactive_user_raises_error(
     role_repo = RoleRepository(db_session)
     auth_service = AuthService(employee_repo, role_repo, hasher, token_service)
 
-    with pytest.raises(ValueError, match="Invalid email or password"):
+    with pytest.raises(AuthenticationError, match="Invalid email or password"):
         auth_service.login("john@example.com", "password123")
 
 

@@ -9,7 +9,7 @@ from app.api.dependencies import (
     require_permission,
 )
 from app.core.security import PasswordHasher
-from app.domain.primitives import Permission
+from app.domain.primitives import DuplicateEmailError, Permission
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
 from app.schemas.employee import EmployeeCreate, EmployeeRead, PaginatedEmployees
@@ -71,6 +71,11 @@ def create_employee(
     try:
         employee = employee_service.create_employee(data)
         return EmployeeRead.model_validate(employee)
+    except DuplicateEmailError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

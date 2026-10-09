@@ -2,7 +2,7 @@
 
 from app.core.security import PasswordHasher
 from app.core.tokens import TokenService
-from app.domain.primitives import InvalidTokenError
+from app.domain.primitives import AuthenticationError, InvalidTokenError
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
 
@@ -33,18 +33,18 @@ class AuthService:
 
         if not employee:
             self.password_hasher.hash("dummy-password")
-            raise ValueError("Invalid email or password")
+            raise AuthenticationError("Invalid email or password")
 
         if not employee.is_active or employee.deleted_at is not None:
             self.password_hasher.hash("dummy-password")
-            raise ValueError("Invalid email or password")
+            raise AuthenticationError("Invalid email or password")
 
         if not self.password_hasher.verify(password, employee.password_hash):
-            raise ValueError("Invalid email or password")
+            raise AuthenticationError("Invalid email or password")
 
         role = self.role_repo.get_by_id(employee.role_id)
         if not role:
-            raise ValueError("Invalid user configuration")
+            raise AuthenticationError("Invalid user configuration")
 
         access_token = self.token_service.create_access_token(
             str(employee.id), role.name

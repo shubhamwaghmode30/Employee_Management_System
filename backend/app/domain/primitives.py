@@ -90,6 +90,13 @@ class DuplicateEmailError(Exception):
         super().__init__(f"Employee with email '{email}' already exists")
 
 
+class AuthenticationError(Exception):
+    """Raised when authentication fails (invalid credentials, inactive user, etc.)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class AuthorizationError(Exception):
     """Raised when a user lacks permission for an action."""
 

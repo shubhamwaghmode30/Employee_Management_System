@@ -11,7 +11,7 @@ from app.api.dependencies import (
 )
 from app.core.security import PasswordHasher
 from app.core.tokens import TokenService
-from app.domain.primitives import RoleName
+from app.domain.primitives import AuthenticationError, InvalidTokenError, RoleName
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
@@ -52,6 +52,11 @@ def login(
             refresh_token=refresh_token,
             token_type="bearer",
         )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,6 +73,11 @@ def refresh(
     try:
         access_token = auth_service.refresh(request.refresh_token)
         return RefreshTokenResponse(access_token=access_token, token_type="bearer")
+    except InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
