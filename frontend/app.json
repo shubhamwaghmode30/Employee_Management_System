@@ -2,10 +2,12 @@
   "expo": {
     "name": "frontend",
     "slug": "frontend",
+    "scheme": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
     "ios": {
       "supportsTablet": true
     },
@@ -19,6 +21,8 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/favicon.png"
     }
   }

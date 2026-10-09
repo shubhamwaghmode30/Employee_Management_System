@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useReducer } from "react";
 import { login, getCurrentUser, type CurrentUser } from "../api/client";
 import { getTokenStorage } from "../storage/token-storage";
 
@@ -8,14 +8,11 @@ type AuthState =
   | { status: "authenticated"; user: CurrentUser };
 
 type AuthAction =
-  | { type: "SET_LOADING" }
   | { type: "SET_UNAUTHENTICATED" }
   | { type: "SET_AUTHENTICATED"; user: CurrentUser };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
-    case "SET_LOADING":
-      return { status: "loading" };
     case "SET_UNAUTHENTICATED":
       return { status: "unauthenticated" };
     case "SET_AUTHENTICATED":
@@ -31,37 +28,45 @@ interface AuthContextValue {
   logout: () => Promise<void>;
 }
 
+// Created once at module level so it is not a new object on every render.
+const tokenStorage = getTokenStorage();
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, { status: "loading" });
-  const tokenStorage = getTokenStorage();
-
-  const restoreSession = React.useCallback(async () => {
-    const token = await tokenStorage.getAccessToken();
-    if (!token) {
-      dispatch({ type: "SET_UNAUTHENTICATED" });
-      return;
-    }
-
-    const result = await getCurrentUser();
-    if (result.success) {
-      dispatch({ type: "SET_AUTHENTICATED", user: result.data });
-    } else {
-      await tokenStorage.removeAccessToken();
-      dispatch({ type: "SET_UNAUTHENTICATED" });
-    }
-  }, [tokenStorage]);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    async function restoreSession() {
+      const token = await tokenStorage.getAccessToken();
+      if (!token) {
+        if (!isCancelled) dispatch({ type: "SET_UNAUTHENTICATED" });
+        return;
+      }
+
+      const result = await getCurrentUser();
+      if (isCancelled) return;
+
+      if (result.success) {
+        dispatch({ type: "SET_AUTHENTICATED", user: result.data });
+      } else {
+        await tokenStorage.removeAccessToken();
+        dispatch({ type: "SET_UNAUTHENTICATED" });
+      }
+    }
+
     restoreSession();
-  }, [restoreSession]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   async function handleLogin(email: string, password: string) {
-    dispatch({ type: "SET_LOADING" });
     const result = await login(email, password);
     if (!result.success) {
-      dispatch({ type: "SET_UNAUTHENTICATED" });
       throw new Error(result.error.message);
     }
 

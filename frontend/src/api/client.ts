@@ -92,6 +92,8 @@ function mockRequest<T>(
   _options?: RequestInit,
   schema?: z.ZodSchema<T>
 ): Result<T> {
+ const path = endpoint.split("?")[0];
+
   if (endpoint === "/auth/login") {
     const response: LoginResponse = {
       access_token: "mock-access-token",
@@ -101,7 +103,7 @@ function mockRequest<T>(
     return { success: true, data: response as T };
   }
 
-  if (endpoint === "/auth/me") {
+  if (path === "/auth/me") {
     const response: CurrentUser = {
       id: "admin-1",
       email: "admin@example.com",
@@ -119,7 +121,7 @@ function mockRequest<T>(
     return { success: true, data: response as T };
   }
 
-  if (endpoint === "/employees") {
+  if (path === "/employees") {
     const response: PaginatedEmployees = {
       items: Array.from({ length: 12 }, (_, i) => {
         const mod = i % 4;
