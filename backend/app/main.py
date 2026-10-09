@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import auth_router
+from app.api.employee import employee_router
 from app.api.health import health_router
 from app.core.settings import get_settings
 
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
 
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(auth_router, prefix="/api/v1")
+    application.include_router(employee_router, prefix="/api/v1")
     return application
 
 
