@@ -5,7 +5,6 @@ import {
   LoginResponseSchema,
   CurrentUserSchema,
   PaginatedEmployeesSchema,
-  EmployeeSchema,
   type ErrorResponse,
   type LoginResponse,
   type CurrentUser,

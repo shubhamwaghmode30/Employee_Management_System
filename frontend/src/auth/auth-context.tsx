@@ -37,11 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, { status: "loading" });
   const tokenStorage = getTokenStorage();
 
-  useEffect(() => {
-    restoreSession();
-  }, []);
-
-  async function restoreSession() {
+  const restoreSession = React.useCallback(async () => {
     const token = await tokenStorage.getAccessToken();
     if (!token) {
       dispatch({ type: "SET_UNAUTHENTICATED" });
@@ -55,7 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await tokenStorage.removeAccessToken();
       dispatch({ type: "SET_UNAUTHENTICATED" });
     }
-  }
+  }, [tokenStorage]);
+
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
 
   async function handleLogin(email: string, password: string) {
     dispatch({ type: "SET_LOADING" });
