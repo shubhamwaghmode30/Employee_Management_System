@@ -27,7 +27,7 @@ export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = 
   const [department, setDepartment] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
-  const [retryCount, setRetryCount] = useState(0);
+  const [reloadCount, setReloadCount] = useState(0);
   const [settledRequest, setSettledRequest] = useState<SettledRequest | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchText.trim(), searchDebounceMs);
@@ -47,7 +47,7 @@ export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = 
   }, [page, pageSize, debouncedSearch, department, statusFilter]);
 
   // Loading is derived: the screen is loading until a result arrives for the current request.
-  const requestKey = `${JSON.stringify(params)}#${retryCount}`;
+  const requestKey = `${JSON.stringify(params)}#${reloadCount}`;
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -98,8 +98,8 @@ export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = 
       setStatusFilter('all');
       setPage(1);
     },
-    retry() {
-      setRetryCount((count) => count + 1);
+    reload() {
+      setReloadCount((count) => count + 1);
     },
   };
 }

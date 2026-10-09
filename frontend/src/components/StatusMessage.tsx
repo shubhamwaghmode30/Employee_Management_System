@@ -1,8 +1,8 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing, typography } from '../theme';
 
-type DirectoryMessageProps = {
+type StatusMessageProps = {
   title: string;
   description?: string;
   isLoading?: boolean;
@@ -10,14 +10,14 @@ type DirectoryMessageProps = {
   onAction?: () => void;
 };
 
-/** Loading, empty and error states for the employee directory. */
-export function DirectoryMessage({
+/** Loading, empty, error and permission messages shown in place of screen content. */
+export function StatusMessage({
   title,
   description,
   isLoading = false,
   actionLabel,
   onAction,
-}: DirectoryMessageProps) {
+}: StatusMessageProps) {
   return (
     <View role={isLoading ? 'progressbar' : 'status'} style={styles.container}>
       {isLoading && <ActivityIndicator color={colors.primary} />}

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import type { EmployeeDataSource } from '../src/features/employees/employee-data-source';
+import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
 import { EmployeeDirectory } from '../src/features/employees/EmployeeDirectory';
 import { createMockEmployeeDataSource } from '../src/features/employees/mock-employee-data-source';
 import { useBreakpoint } from '../src/hooks/use-breakpoint';
@@ -25,19 +26,22 @@ async function renderDirectory({
 }: RenderOptions = {}) {
   mockedUseBreakpoint.mockReturnValue(breakpoint);
   const listEmployees = jest.fn(dataSource.listEmployees);
+  const deleteEmployee = jest.fn(dataSource.deleteEmployee);
   const handlers = {
     onCreateEmployee: jest.fn(),
+    onViewEmployee: jest.fn(),
     onEditEmployee: jest.fn(),
-    onDeleteEmployee: jest.fn(),
   };
   await render(
     <SessionUserProvider
       user={{ fullName: 'Arjun Mehta', email: 'arjun.mehta@company.com', role }}
     >
-      <EmployeeDirectory dataSource={{ listEmployees }} {...handlers} />
+      <EmployeeDataSourceProvider dataSource={{ ...dataSource, listEmployees, deleteEmployee }}>
+        <EmployeeDirectory {...handlers} />
+      </EmployeeDataSourceProvider>
     </SessionUserProvider>,
   );
-  return { listEmployees, ...handlers };
+  return { listEmployees, deleteEmployee, ...handlers };
 }
 
 describe('EmployeeDirectory layouts', () => {
@@ -62,6 +66,7 @@ describe('EmployeeDirectory layouts', () => {
     let releaseResponse = () => {};
     const workingSource = createMockEmployeeDataSource();
     const slowSource: EmployeeDataSource = {
+      ...workingSource,
       async listEmployees(params) {
         await new Promise<void>((resolve) => {
           releaseResponse = resolve;
@@ -110,19 +115,73 @@ describe('EmployeeDirectory role-based controls', () => {
     expect(screen.queryByRole('columnheader', { name: 'Actions' })).toBeNull();
   });
 
-  it('passes the chosen employee to the edit and delete handlers', async () => {
-    const { onEditEmployee, onDeleteEmployee, onCreateEmployee } = await renderDirectory();
+  it('passes the chosen employee to the view and edit handlers', async () => {
+    const { onCreateEmployee, onViewEmployee, onEditEmployee } = await renderDirectory();
     await screen.findByText('Priya Sharma');
 
     await fireEvent.press(screen.getByRole('button', { name: 'Add employee' }));
+    await fireEvent.press(screen.getByRole('link', { name: 'Priya Sharma' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Edit Priya Sharma' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Delete Priya Sharma' }));
 
     expect(onCreateEmployee).toHaveBeenCalledTimes(1);
-    expect(onEditEmployee).toHaveBeenCalledWith(expect.objectContaining({ email: 'priya.sharma@company.com' }));
-    expect(onDeleteEmployee).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'priya.sharma@company.com' }),
-    );
+    const priya = expect.objectContaining({ email: 'priya.sharma@company.com' });
+    expect(onViewEmployee).toHaveBeenCalledWith(priya);
+    expect(onEditEmployee).toHaveBeenCalledWith(priya);
+  });
+});
+
+describe('EmployeeDirectory deletion', () => {
+  it('deletes only after confirmation and refreshes the list', async () => {
+    const { deleteEmployee } = await renderDirectory({ role: 'ADMIN' });
+    await screen.findByText('Page 1 of 3 · 24 employees');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete Priya Sharma' }));
+    expect(screen.getByText('Delete Priya Sharma?')).toBeTruthy();
+    expect(deleteEmployee).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText('Page 1 of 3 · 23 employees')).toBeTruthy();
+    expect(screen.queryByText('Priya Sharma')).toBeNull();
+    expect(deleteEmployee).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the employee when the dialog is cancelled', async () => {
+    const { deleteEmployee } = await renderDirectory({ role: 'ADMIN' });
+    await screen.findByText('Priya Sharma');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete Priya Sharma' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Delete Priya Sharma?')).toBeNull();
+    expect(screen.getByText('Priya Sharma')).toBeTruthy();
+    expect(deleteEmployee).not.toHaveBeenCalled();
+  });
+
+  it('shows the error in the dialog when deletion fails', async () => {
+    const workingSource = createMockEmployeeDataSource();
+    await renderDirectory({
+      role: 'ADMIN',
+      dataSource: {
+        ...workingSource,
+        deleteEmployee: async () => ({
+          ok: false,
+          error: {
+            kind: 'forbidden',
+            status: 403,
+            code: 'SELF_DELETE_FORBIDDEN',
+            message: 'You cannot delete your own account',
+          },
+        }),
+      },
+    });
+    await screen.findByText('Priya Sharma');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete Priya Sharma' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText('You cannot delete your own account')).toBeTruthy();
+    expect(screen.getByText('Delete Priya Sharma?')).toBeTruthy();
   });
 });
 
@@ -201,7 +260,7 @@ describe('EmployeeDirectory errors', () => {
           message: 'Unable to reach the server. Check your connection and try again.',
         },
       });
-    await renderDirectory({ dataSource: { listEmployees } });
+    await renderDirectory({ dataSource: { ...workingSource, listEmployees } });
 
     expect(await screen.findByText('Employees could not be loaded')).toBeTruthy();
     expect(

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { EmployeeActions } from './EmployeeActions';
@@ -10,6 +10,7 @@ type EmployeeTableProps = {
   employees: readonly Employee[];
   canEdit: boolean;
   canDelete: boolean;
+  onViewEmployee: (employee: Employee) => void;
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployee: (employee: Employee) => void;
 };
@@ -18,6 +19,7 @@ export function EmployeeTable({
   employees,
   canEdit,
   canDelete,
+  onViewEmployee,
   onEditEmployee,
   onDeleteEmployee,
 }: EmployeeTableProps) {
@@ -41,7 +43,9 @@ export function EmployeeTable({
         return (
           <View key={employee.id} role="row" style={styles.row}>
             <View role="cell" style={styles.nameColumn}>
-              <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
+              <Pressable accessibilityRole="link" onPress={() => onViewEmployee(employee)}>
+                <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
+              </Pressable>
               <Text style={styles.secondary}>{employee.employee_code}</Text>
             </View>
             <Text role="cell" style={[styles.cell, styles.emailColumn]} numberOfLines={1}>
@@ -107,7 +111,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   name: {
-    color: colors.textPrimary,
+    color: colors.primary,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { EmployeeActions } from './EmployeeActions';
@@ -10,6 +10,7 @@ type EmployeeCardListProps = {
   employees: readonly Employee[];
   canEdit: boolean;
   canDelete: boolean;
+  onViewEmployee: (employee: Employee) => void;
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployee: (employee: Employee) => void;
 };
@@ -18,6 +19,7 @@ export function EmployeeCardList({
   employees,
   canEdit,
   canDelete,
+  onViewEmployee,
   onEditEmployee,
   onDeleteEmployee,
 }: EmployeeCardListProps) {
@@ -29,7 +31,9 @@ export function EmployeeCardList({
           <View key={employee.id} role="listitem" style={styles.card}>
             <View style={styles.header}>
               <View style={styles.identity}>
-                <Text style={styles.name}>{fullName}</Text>
+                <Pressable accessibilityRole="link" onPress={() => onViewEmployee(employee)}>
+                  <Text style={styles.name}>{fullName}</Text>
+                </Pressable>
                 <Text style={styles.secondary}>
                   {employee.job_title} · {employee.department}
                 </Text>
@@ -78,7 +82,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    color: colors.textPrimary,
+    color: colors.primary,
     fontSize: typography.fontSize.md,
     fontWeight: typography.fontWeight.semibold,
   },

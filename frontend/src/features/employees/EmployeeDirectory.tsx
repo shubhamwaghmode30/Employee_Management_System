@@ -2,62 +2,76 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { hasPermission } from '../../auth/role-permissions';
 import { useSessionUser } from '../../auth/session-user-context';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { StatusMessage } from '../../components/StatusMessage';
 import { useBreakpoint } from '../../hooks/use-breakpoint';
 import { colors, spacing, typography } from '../../theme';
-import { DirectoryMessage } from './DirectoryMessage';
 import { EmployeeCardList } from './EmployeeCardList';
-import type { EmployeeDataSource } from './employee-data-source';
+import { useEmployeeDataSource } from './employee-data-source-context';
+import { getFullName } from './employee-labels';
 import type { Employee } from './employee-schemas';
 import { EmployeeFilters } from './EmployeeFilters';
 import { EmployeeTable } from './EmployeeTable';
 import { PaginationControls } from './PaginationControls';
 import { type DirectoryState, useEmployeeDirectory } from './use-employee-directory';
+import { useEmployeeDeletion } from './use-employee-deletion';
 
 type EmployeeDirectoryProps = {
-  dataSource: EmployeeDataSource;
   onCreateEmployee: () => void;
+  onViewEmployee: (employee: Employee) => void;
   onEditEmployee: (employee: Employee) => void;
-  onDeleteEmployee: (employee: Employee) => void;
 };
 
 export function EmployeeDirectory({
-  dataSource,
   onCreateEmployee,
+  onViewEmployee,
   onEditEmployee,
-  onDeleteEmployee,
 }: EmployeeDirectoryProps) {
   const user = useSessionUser();
   const breakpoint = useBreakpoint();
+  const dataSource = useEmployeeDataSource();
   const directory = useEmployeeDirectory(dataSource);
+  const deletion = useEmployeeDeletion(dataSource, handleEmployeeDeleted);
 
   const canCreate = hasPermission(user.role, 'EMPLOYEE_CREATE');
   const canEdit = hasPermission(user.role, 'EMPLOYEE_UPDATE');
   const canDelete = hasPermission(user.role, 'EMPLOYEE_DELETE');
 
+  function handleEmployeeDeleted() {
+    // Deleting the only row on the last page would leave an empty page behind.
+    const isLastRowOnPage =
+      directory.state.status === 'success' && directory.state.data.items.length === 1;
+    if (isLastRowOnPage && directory.page > 1) {
+      directory.goToPreviousPage();
+    } else {
+      directory.reload();
+    }
+  }
+
   function renderResults(state: DirectoryState) {
     if (state.status === 'loading') {
-      return <DirectoryMessage title="Loading employees…" isLoading />;
+      return <StatusMessage title="Loading employees…" isLoading />;
     }
     if (state.status === 'error') {
       return (
-        <DirectoryMessage
+        <StatusMessage
           title="Employees could not be loaded"
           description={state.error.message}
           actionLabel="Try again"
-          onAction={directory.retry}
+          onAction={directory.reload}
         />
       );
     }
     if (state.data.items.length === 0) {
       return directory.hasActiveFilters ? (
-        <DirectoryMessage
+        <StatusMessage
           title="No employees match your filters"
           description="Try a different search or clear the filters."
           actionLabel="Clear filters"
           onAction={directory.clearFilters}
         />
       ) : (
-        <DirectoryMessage title="No employees yet" description="Employees you add will appear here." />
+        <StatusMessage title="No employees yet" description="Employees you add will appear here." />
       );
     }
 
@@ -65,8 +79,9 @@ export function EmployeeDirectory({
       employees: state.data.items,
       canEdit,
       canDelete,
+      onViewEmployee,
       onEditEmployee,
-      onDeleteEmployee,
+      onDeleteEmployee: deletion.requestDeletion,
     };
     return (
       <>
@@ -107,6 +122,16 @@ export function EmployeeDirectory({
         onStatusFilterChange={directory.changeStatusFilter}
       />
       {renderResults(directory.state)}
+      <ConfirmDialog
+        isOpen={deletion.pendingEmployee !== null}
+        title={deletion.pendingEmployee === null ? '' : `Delete ${getFullName(deletion.pendingEmployee)}?`}
+        message="They will be removed from the employee directory and can no longer sign in."
+        confirmLabel="Delete"
+        isConfirming={deletion.isDeleting}
+        errorMessage={deletion.error?.message ?? null}
+        onConfirm={() => void deletion.confirmDeletion()}
+        onCancel={deletion.cancelDeletion}
+      />
     </ScrollView>
   );
 }

@@ -1,14 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { roleLabels } from '../auth/roles';
 import { colors, spacing, typography } from '../theme';
-import type { RoleName } from '../types/role-name';
 import type { SessionUser } from '../types/session-user';
-
-const roleLabels: Record<RoleName, string> = {
-  ADMIN: 'Admin',
-  HR_MANAGER: 'HR Manager',
-  EMPLOYEE: 'Employee',
-};
 
 type UserMenuProps = {
   user: SessionUser;

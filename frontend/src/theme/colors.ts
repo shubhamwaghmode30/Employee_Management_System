@@ -4,6 +4,7 @@ export const colors = {
   border: '#E2E8F0',
   textPrimary: '#0F172A',
   textSecondary: '#475569',
+  placeholder: '#94A3B8',
   primary: '#1D4ED8',
   primarySubtle: '#DBEAFE',
   onPrimary: '#FFFFFF',
