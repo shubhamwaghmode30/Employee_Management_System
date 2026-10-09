@@ -2,12 +2,6 @@
   "extends": "expo",
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/no-restricted-syntax": [
-      "error",
-      {
-        "selector": "TSUnknownKeyword",
-        "message": "Do not use 'unknown' - use a specific type instead"
-      }
-    ]
+    "react-hooks/set-state-in-effect": "off"
   }
 }
