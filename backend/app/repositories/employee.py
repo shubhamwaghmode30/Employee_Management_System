@@ -1,7 +1,6 @@
 """Repository for Employee model operations."""
 
 from datetime import UTC, datetime
-from typing import cast
 
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
@@ -20,14 +19,12 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
     def get_by_email(self, email: str) -> Employee | None:
         """Retrieve an employee by email, excluding soft-deleted rows."""
         stmt = self._base_query().where(Employee.email == email)
-        result = self.session.scalars(stmt).first()
-        return cast(Employee | None, result)
+        return self.session.scalars(stmt).first()
 
     def get_by_id(self, id: int | str) -> Employee | None:
         """Retrieve an employee by ID, excluding soft-deleted rows."""
         stmt = self._base_query().where(Employee.id == id)
-        result = self.session.scalars(stmt).first()
-        return cast(Employee | None, result)
+        return self.session.scalars(stmt).first()
 
     def search(
         self,
@@ -76,7 +73,7 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         stmt = stmt.offset(offset).limit(page_size)
 
         results = list(self.session.scalars(stmt))
-        return cast(tuple[list[Employee], int], (results, total))
+        return results, total
 
     def soft_delete(self, employee: Employee) -> Employee:
         """Soft delete an employee by setting deleted_at timestamp."""
