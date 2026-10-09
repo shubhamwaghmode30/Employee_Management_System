@@ -14,7 +14,8 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "testTimeout": 20000
+    "testTimeout": 20000,
+    "maxWorkers": 2
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
