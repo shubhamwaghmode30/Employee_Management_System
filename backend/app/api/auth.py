@@ -1,6 +1,6 @@
 """Authentication routes for login, refresh, and current user."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.api.dependencies import (
     get_current_employee,
@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_role_repository,
     get_token_service,
 )
+from app.api.employee import get_employee_service
 from app.core.security import PasswordHasher
 from app.core.tokens import TokenService
 from app.domain.primitives import AuthenticationError, InvalidTokenError, RoleName
@@ -19,10 +20,12 @@ from app.schemas.auth import (
     CurrentUserResponse,
     LoginRequest,
     LoginResponse,
+    PasswordChange,
     RefreshTokenRequest,
     RefreshTokenResponse,
 )
 from app.services.auth import AuthService
+from app.services.employee import EmployeeService
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -128,3 +131,20 @@ def get_current_user(
         role=role.name,
         permissions=permissions,
     )
+
+
+@auth_router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def change_password(
+    data: PasswordChange,
+    current_employee: Employee = Depends(get_current_employee),
+    employee_service: EmployeeService = Depends(get_employee_service),
+) -> Response:
+    """Change the signed-in employee's own password."""
+    employee_service.change_password(
+        current_employee, data.current_password, data.new_password
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
