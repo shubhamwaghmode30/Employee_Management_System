@@ -8,6 +8,7 @@ import os
 import sys
 from datetime import UTC, datetime
 
+from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -162,6 +163,8 @@ def seed_sample_employees(session: Session) -> None:
 
 def main() -> None:
     """Run all seed operations."""
+    # SEED_* values may live in .env; variables already exported take precedence.
+    load_dotenv()
     Base.metadata.create_all(engine)
 
     session = SessionLocal()

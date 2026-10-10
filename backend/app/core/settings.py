@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="forbid",
+        # .env also holds SEED_* values for scripts/seed.py, which the API ignores.
+        extra="ignore",
         frozen=True,
         populate_by_name=True,
     )
