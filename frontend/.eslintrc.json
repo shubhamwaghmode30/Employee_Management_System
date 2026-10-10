@@ -1,7 +1,17 @@
 {
   "extends": "expo",
+  "ignorePatterns": ["dist/*", "web-build/*", ".expo/*", "expo-env.d.ts"],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/ban-ts-comment": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "TSUnknownKeyword",
+        "message": "Use a concrete type or a zod schema instead of unknown."
+      }
+    ],
     "react-hooks/set-state-in-effect": "off"
   }
 }
