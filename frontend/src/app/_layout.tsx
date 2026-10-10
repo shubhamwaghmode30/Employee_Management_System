@@ -1,13 +1,13 @@
-import { Stack } from "expo-router";
-import { AuthProvider } from "../auth/auth-context";
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+
+import { AuthProvider } from '../auth/auth-session';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-      </Stack>
+      <Stack screenOptions={{ headerShown: false }} />
+      <StatusBar style="auto" />
     </AuthProvider>
   );
 }
