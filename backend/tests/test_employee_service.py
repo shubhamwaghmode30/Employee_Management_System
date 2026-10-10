@@ -1,4 +1,4 @@
-"""Tests for employee service."""
+"""Tests for employee service business rules."""
 
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -6,38 +6,41 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
 from app.core.security import Argon2PasswordHasher
-from app.domain.primitives import DuplicateEmailError, EmploymentType, RoleName
+from app.domain.primitives import (
+    AuthorizationError,
+    DuplicateEmailError,
+    DuplicateEmployeeCodeError,
+    EmploymentType,
+    EntityNotFoundError,
+    InvalidEmployeeDataError,
+    RoleName,
+    SelfActionError,
+)
+from app.models.employee import ContractEmployee, Employee, FullTimeEmployee
 from app.models.role import Role
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
-from app.schemas.employee import EmployeeCreate
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.services.employee import EmployeeService
 
 
 @pytest.fixture
-def in_memory_db() -> Generator:
-    """Create an in-memory SQLite database for testing."""
+def db_session() -> Generator[Session, None, None]:
+    """Create an in-memory database session."""
     engine = create_engine(
         "sqlite:///:memory:", connect_args={"check_same_thread": False}
     )
     Base.metadata.create_all(engine)
-    TestingSessionLocal = sessionmaker(bind=engine)
-    yield TestingSessionLocal
-    Base.metadata.drop_all(engine)
-
-
-@pytest.fixture
-def db_session(in_memory_db: Generator) -> Generator:
-    """Create a database session for testing."""
-    session = in_memory_db()
+    session = sessionmaker(bind=engine)()
     try:
         yield session
     finally:
         session.close()
+        Base.metadata.drop_all(engine)
 
 
 @pytest.fixture
@@ -47,110 +50,437 @@ def hasher() -> Argon2PasswordHasher:
 
 
 @pytest.fixture
-def role(db_session: Generator) -> Role:
-    """Create a test role."""
-    role = Role(name=RoleName.EMPLOYEE, description="Employee")
-    db_session.add(role)
+def roles(db_session: Session) -> dict[RoleName, Role]:
+    """Create the three system roles."""
+    created = {
+        name: Role(name=name, description=name.value.replace("_", " ").title())
+        for name in RoleName
+    }
+    db_session.add_all(created.values())
     db_session.commit()
-    db_session.refresh(role)
-    return role
+    return created
 
 
-def test_create_employee_hashes_password(
-    db_session: Generator, role: Role, hasher: Argon2PasswordHasher
-) -> None:
-    """Test that password is hashed when creating employee."""
-    employee_repo = EmployeeRepository(db_session)
-    role_repo = RoleRepository(db_session)
-    service = EmployeeService(employee_repo, role_repo, hasher)
+@pytest.fixture
+def service(db_session: Session, hasher: Argon2PasswordHasher) -> EmployeeService:
+    """Create the service under test."""
+    return EmployeeService(
+        EmployeeRepository(db_session), RoleRepository(db_session), hasher
+    )
 
-    data = EmployeeCreate(
+
+def add_staff(
+    db_session: Session,
+    hasher: Argon2PasswordHasher,
+    role: Role,
+    email: str,
+    employee_code: str,
+) -> FullTimeEmployee:
+    """Persist a full-time employee with the given role."""
+    first_name, last_name = email.split("@")[0].split(".")
+    employee = FullTimeEmployee(
+        employee_code=employee_code,
+        first_name=first_name.title(),
+        last_name=last_name.title(),
+        email=email,
+        password_hash=hasher.hash("Welcome@2026"),
+        department="Human Resources",
+        job_title="People Partner",
+        hire_date=datetime(2023, 4, 3, tzinfo=UTC),
+        role_id=role.id,
         employment_type=EmploymentType.FULL_TIME,
-        employee_code="EMP001",
-        first_name="John",
-        last_name="Doe",
-        email="john@example.com",
+        annual_salary=Decimal("92000.00"),
+    )
+    db_session.add(employee)
+    db_session.commit()
+    return employee
+
+
+@pytest.fixture
+def admin(
+    db_session: Session, hasher: Argon2PasswordHasher, roles: dict[RoleName, Role]
+) -> FullTimeEmployee:
+    """Create an admin actor."""
+    return add_staff(
+        db_session, hasher, roles[RoleName.ADMIN], "neha.kapoor@company.com", "ADM001"
+    )
+
+
+@pytest.fixture
+def hr_manager(
+    db_session: Session, hasher: Argon2PasswordHasher, roles: dict[RoleName, Role]
+) -> FullTimeEmployee:
+    """Create an HR manager actor."""
+    return add_staff(
+        db_session,
+        hasher,
+        roles[RoleName.HR_MANAGER],
+        "priya.sharma@company.com",
+        "HRM001",
+    )
+
+
+def full_time_payload(
+    role: Role,
+    email: str = "arjun.mehta@company.com",
+    employee_code: str = "ENG001",
+) -> EmployeeCreate:
+    """Build a valid full-time create payload."""
+    return EmployeeCreate(
+        employment_type=EmploymentType.FULL_TIME,
+        employee_code=employee_code,
+        first_name="Arjun",
+        last_name="Mehta",
+        email=email,
         department="Engineering",
-        job_title="Engineer",
-        hire_date=datetime.now(UTC),
+        job_title="Backend Engineer",
+        hire_date=datetime(2024, 1, 15, tzinfo=UTC),
         role_id=role.id,
-        password="password123",
-        annual_salary=Decimal("75000.00"),
+        password="Secure@Pass1",
+        annual_salary=Decimal("85000.00"),
     )
 
-    employee = service.create_employee(data)
 
-    assert employee.password_hash != "password123"
-    assert hasher.verify("password123", employee.password_hash)
-
-
-def test_create_employee_duplicate_email_raises_error(
-    db_session: Generator, role: Role, hasher: Argon2PasswordHasher
-) -> None:
-    """Test that duplicate email raises DuplicateEmailError."""
-    employee_repo = EmployeeRepository(db_session)
-    role_repo = RoleRepository(db_session)
-    service = EmployeeService(employee_repo, role_repo, hasher)
-
-    data = EmployeeCreate(
-        employment_type=EmploymentType.FULL_TIME,
-        employee_code="EMP001",
-        first_name="John",
-        last_name="Doe",
-        email="john@example.com",
-        department="Engineering",
-        job_title="Engineer",
-        hire_date=datetime.now(UTC),
+def contract_payload(role: Role) -> EmployeeCreate:
+    """Build a valid contract create payload."""
+    return EmployeeCreate(
+        employment_type=EmploymentType.CONTRACT,
+        employee_code="CON001",
+        first_name="Rahul",
+        last_name="Verma",
+        email="rahul.verma@company.com",
+        department="Design",
+        job_title="UX Consultant",
+        hire_date=datetime(2025, 2, 1, tzinfo=UTC),
         role_id=role.id,
-        password="password123",
-        annual_salary=Decimal("75000.00"),
+        password="Secure@Pass1",
+        hourly_rate=Decimal("65.00"),
+        contract_end_date=datetime(2026, 12, 31, tzinfo=UTC),
     )
 
-    service.create_employee(data)
 
-    data2 = EmployeeCreate(
-        employment_type=EmploymentType.FULL_TIME,
-        employee_code="EMP002",
-        first_name="Jane",
-        last_name="Smith",
-        email="john@example.com",
-        department="HR",
-        job_title="Manager",
-        hire_date=datetime.now(UTC),
-        role_id=role.id,
-        password="password456",
-        annual_salary=Decimal("80000.00"),
-    )
-
-    with pytest.raises(DuplicateEmailError):
-        service.create_employee(data2)
-
-
-def test_search_employees_paginated(
-    db_session: Generator, role: Role, hasher: Argon2PasswordHasher
-) -> None:
-    """Test that search returns paginated results."""
-    employee_repo = EmployeeRepository(db_session)
-    role_repo = RoleRepository(db_session)
-    service = EmployeeService(employee_repo, role_repo, hasher)
-
-    for i in range(15):
-        data = EmployeeCreate(
-            employment_type=EmploymentType.FULL_TIME,
-            employee_code=f"EMP{i:03d}",
-            first_name=f"Employee{i}",
-            last_name="Test",
-            email=f"employee{i}@example.com",
-            department="Engineering",
-            job_title="Engineer",
-            hire_date=datetime.now(UTC),
-            role_id=role.id,
-            password="password123",
-            annual_salary=Decimal("50000.00"),
+class TestCreateEmployee:
+    def test_hashes_password_through_hasher(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        admin: Employee,
+        hasher: Argon2PasswordHasher,
+    ) -> None:
+        employee = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
         )
-        service.create_employee(data)
 
-    employees, total = service.search_employees(page=1, page_size=10)
+        assert employee.password_hash != "Secure@Pass1"
+        assert hasher.verify("Secure@Pass1", employee.password_hash)
 
-    assert len(employees) == 10
-    assert total == 15
+    def test_creates_contract_employee_with_contract_fields(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        employee = service.create_employee(
+            contract_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        assert isinstance(employee, ContractEmployee)
+        assert employee.hourly_rate == Decimal("65.00")
+
+    def test_rejects_duplicate_email_case_insensitively(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        service.create_employee(full_time_payload(role), admin)
+
+        with pytest.raises(DuplicateEmailError):
+            service.create_employee(
+                full_time_payload(role, "Arjun.Mehta@company.com", "ENG002"), admin
+            )
+
+    def test_rejects_duplicate_employee_code(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        service.create_employee(full_time_payload(role), admin)
+
+        with pytest.raises(DuplicateEmployeeCodeError):
+            service.create_employee(
+                full_time_payload(role, "kavya.iyer@company.com", "ENG001"), admin
+            )
+
+    def test_rejects_email_of_soft_deleted_employee(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        admin: Employee,
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        created = service.create_employee(full_time_payload(role), admin)
+        service.delete_employee(str(created.id), admin)
+
+        with pytest.raises(DuplicateEmailError):
+            service.create_employee(
+                full_time_payload(role, employee_code="ENG002"), admin
+            )
+
+    def test_rejects_unknown_role(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        payload = full_time_payload(roles[RoleName.EMPLOYEE]).model_copy(
+            update={"role_id": 999}
+        )
+
+        with pytest.raises(InvalidEmployeeDataError):
+            service.create_employee(payload, admin)
+
+    def test_hr_manager_cannot_assign_admin_role(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        hr_manager: Employee,
+    ) -> None:
+        with pytest.raises(AuthorizationError):
+            service.create_employee(
+                full_time_payload(roles[RoleName.ADMIN]), hr_manager
+            )
+
+    def test_admin_can_assign_admin_role(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        employee = service.create_employee(
+            full_time_payload(roles[RoleName.ADMIN]), admin
+        )
+
+        assert employee.role_id == roles[RoleName.ADMIN].id
+
+
+class TestGetEmployee:
+    def test_raises_not_found_for_unknown_id(self, service: EmployeeService) -> None:
+        with pytest.raises(EntityNotFoundError):
+            service.get_employee("7d4f8a52-0000-4000-8000-000000000000")
+
+    def test_raises_not_found_for_soft_deleted(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        service.delete_employee(str(created.id), admin)
+
+        with pytest.raises(EntityNotFoundError):
+            service.get_employee(str(created.id))
+
+
+class TestUpdateEmployee:
+    def test_updates_only_sent_fields(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        updated = service.update_employee(
+            str(created.id),
+            EmployeeUpdate(job_title="Senior Backend Engineer"),
+            admin,
+        )
+
+        assert updated.job_title == "Senior Backend Engineer"
+        assert updated.department == "Engineering"
+
+    def test_never_changes_password_hash(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        original_hash = created.password_hash
+
+        updated = service.update_employee(
+            str(created.id), EmployeeUpdate(department="Platform"), admin
+        )
+
+        assert updated.password_hash == original_hash
+
+    def test_clears_phone_when_sent_as_null(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        payload = full_time_payload(roles[RoleName.EMPLOYEE]).model_copy(
+            update={"phone": "+91 98200 12345"}
+        )
+        created = service.create_employee(payload, admin)
+
+        updated = service.update_employee(
+            str(created.id), EmployeeUpdate.model_validate({"phone": None}), admin
+        )
+
+        assert updated.phone is None
+
+    def test_rejects_email_owned_by_someone_else(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        admin: Employee,
+        hr_manager: Employee,
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        with pytest.raises(DuplicateEmailError):
+            service.update_employee(
+                str(created.id), EmployeeUpdate(email=hr_manager.email), admin
+            )
+
+    def test_cannot_deactivate_self(
+        self, service: EmployeeService, admin: Employee
+    ) -> None:
+        with pytest.raises(SelfActionError):
+            service.update_employee(
+                str(admin.id), EmployeeUpdate(is_active=False), admin
+            )
+
+    def test_can_deactivate_someone_else(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        updated = service.update_employee(
+            str(created.id), EmployeeUpdate(is_active=False), admin
+        )
+
+        assert updated.is_active is False
+
+    def test_hr_manager_cannot_promote_to_admin(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        admin: Employee,
+        hr_manager: Employee,
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        with pytest.raises(AuthorizationError):
+            service.update_employee(
+                str(created.id),
+                EmployeeUpdate(role_id=roles[RoleName.ADMIN].id),
+                hr_manager,
+            )
+
+    def test_rejects_contract_fields_on_full_time_employee(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        with pytest.raises(InvalidEmployeeDataError):
+            service.update_employee(
+                str(created.id), EmployeeUpdate(hourly_rate=Decimal("40.00")), admin
+            )
+
+    def test_rejects_null_for_required_field(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        with pytest.raises(InvalidEmployeeDataError):
+            service.update_employee(
+                str(created.id),
+                EmployeeUpdate.model_validate({"department": None}),
+                admin,
+            )
+
+    def test_updates_contract_end_date(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            contract_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        new_end = datetime(2027, 6, 30, tzinfo=UTC)
+
+        updated = service.update_employee(
+            str(created.id), EmployeeUpdate(contract_end_date=new_end), admin
+        )
+
+        assert isinstance(updated, ContractEmployee)
+        assert updated.contract_end_date is not None
+        assert updated.contract_end_date.date() == new_end.date()
+
+
+class TestDeleteEmployee:
+    def test_soft_deletes_employee(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        service.delete_employee(str(created.id), admin)
+
+        assert created.deleted_at is not None
+
+    def test_cannot_delete_self(
+        self, service: EmployeeService, admin: Employee
+    ) -> None:
+        with pytest.raises(SelfActionError):
+            service.delete_employee(str(admin.id), admin)
+
+
+class TestChangePassword:
+    def test_changes_password_after_verifying_current(
+        self,
+        service: EmployeeService,
+        admin: Employee,
+        hasher: Argon2PasswordHasher,
+    ) -> None:
+        service.change_password(admin, "Welcome@2026", "Fresh@Pass2027")
+
+        assert hasher.verify("Fresh@Pass2027", admin.password_hash)
+
+    def test_rejects_wrong_current_password(
+        self, service: EmployeeService, admin: Employee
+    ) -> None:
+        with pytest.raises(InvalidEmployeeDataError):
+            service.change_password(admin, "Wrong@Pass1", "Fresh@Pass2027")
+
+    def test_rejects_reusing_current_password(
+        self, service: EmployeeService, admin: Employee
+    ) -> None:
+        with pytest.raises(InvalidEmployeeDataError):
+            service.change_password(admin, "Welcome@2026", "Welcome@2026")
+
+
+class TestSearchAndDepartments:
+    def test_search_is_paginated(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        for index in range(15):
+            service.create_employee(
+                full_time_payload(
+                    role, f"analyst.{index:02d}@company.com", f"ANL{index:03d}"
+                ),
+                admin,
+            )
+
+        employees, total = service.search_employees(page=2, page_size=10)
+
+        assert len(employees) == 6
+        assert total == 16
+
+    def test_lists_distinct_departments(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        service.create_employee(full_time_payload(roles[RoleName.EMPLOYEE]), admin)
+        service.create_employee(contract_payload(roles[RoleName.EMPLOYEE]), admin)
+
+        assert service.list_departments() == [
+            "Design",
+            "Engineering",
+            "Human Resources",
+        ]

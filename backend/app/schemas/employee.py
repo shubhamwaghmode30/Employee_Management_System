@@ -2,13 +2,14 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
+    model_validator,
 )
 
 from app.domain.primitives import EmploymentType
@@ -66,6 +67,23 @@ class EmployeeCreate(BaseModel):
     hourly_rate: Decimal | None = Field(None, ge=0, decimal_places=2, max_digits=10)
     contract_end_date: datetime | None = None
 
+    @model_validator(mode="after")
+    def check_pay_matches_employment_type(self) -> Self:
+        """Require the pay fields of the chosen type and reject the other's."""
+        if self.employment_type == EmploymentType.FULL_TIME:
+            if self.annual_salary is None:
+                raise ValueError("annual_salary is required for full-time employees")
+            if self.hourly_rate is not None or self.contract_end_date is not None:
+                raise ValueError(
+                    "hourly_rate and contract_end_date apply to contract employees"
+                )
+        else:
+            if self.hourly_rate is None:
+                raise ValueError("hourly_rate is required for contract employees")
+            if self.annual_salary is not None:
+                raise ValueError("annual_salary applies to full-time employees")
+        return self
+
 
 class EmployeeUpdate(BaseModel):
     """Schema for updating an employee (all fields optional)."""
@@ -77,6 +95,7 @@ class EmployeeUpdate(BaseModel):
     department: str | None = Field(None, min_length=1, max_length=100)
     job_title: str | None = Field(None, min_length=1, max_length=100)
     is_active: bool | None = None
+    role_id: int | None = Field(None, gt=0)
     annual_salary: Decimal | None = Field(None, ge=0, decimal_places=2, max_digits=10)
     hourly_rate: Decimal | None = Field(None, ge=0, decimal_places=2, max_digits=10)
     contract_end_date: datetime | None = None
@@ -124,3 +143,4 @@ class EmployeeSearchParams(BaseModel):
     q: str | None = Field(default=None, max_length=100)
     department: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
+

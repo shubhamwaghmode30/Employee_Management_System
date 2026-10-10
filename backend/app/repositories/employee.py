@@ -26,6 +26,32 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         stmt = self._base_query().where(Employee.id == id)
         return self.session.scalars(stmt).first()
 
+    def is_email_taken(self, email: str, excluding_id: str | None = None) -> bool:
+        """Check email uniqueness, counting soft-deleted rows.
+
+        Soft-deleted rows still hold the database unique constraint, so they
+        must block reuse to avoid an integrity error on insert.
+        """
+        stmt = select(Employee.id).where(func.lower(Employee.email) == email.lower())
+        if excluding_id is not None:
+            stmt = stmt.where(Employee.id != excluding_id)
+        return self.session.scalars(stmt).first() is not None
+
+    def is_employee_code_taken(self, employee_code: str) -> bool:
+        """Check employee code uniqueness, counting soft-deleted rows."""
+        stmt = select(Employee.id).where(Employee.employee_code == employee_code)
+        return self.session.scalars(stmt).first() is not None
+
+    def list_departments(self) -> list[str]:
+        """Return distinct departments of non-deleted employees, sorted."""
+        stmt = (
+            select(Employee.department)
+            .where(Employee.deleted_at.is_(None))
+            .distinct()
+            .order_by(Employee.department)
+        )
+        return list(self.session.scalars(stmt))
+
     def search(
         self,
         department: str | None = None,
@@ -39,7 +65,7 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         Args:
             department: Filter by department (exact match)
             is_active: Filter by active status
-            query: Text search across first_name, last_name, and email
+            query: Text search across names, email and employee code
             page: Page number (1-indexed)
             page_size: Number of items per page
 
@@ -61,6 +87,7 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
                     Employee.first_name.ilike(search_pattern),
                     Employee.last_name.ilike(search_pattern),
                     Employee.email.ilike(search_pattern),
+                    Employee.employee_code.ilike(search_pattern),
                 )
             )
 
@@ -68,9 +95,13 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = int(self.session.scalar(count_stmt) or 0)
 
-        # Apply pagination
+        # Stable ordering keeps pages from overlapping between requests.
         offset = (page - 1) * page_size
-        stmt = stmt.offset(offset).limit(page_size)
+        stmt = (
+            stmt.order_by(Employee.last_name, Employee.first_name, Employee.id)
+            .offset(offset)
+            .limit(page_size)
+        )
 
         results = list(self.session.scalars(stmt))
         return results, total

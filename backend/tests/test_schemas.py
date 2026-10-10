@@ -125,6 +125,40 @@ class TestEmployeeCreate:
             EmployeeCreate(**data)
 
 
+    def test_full_time_without_salary_raises_error(self) -> None:
+        """Test that the flat create schema requires salary for full-time."""
+        with pytest.raises(ValidationError):
+            EmployeeCreate(
+                employment_type=EmploymentType.FULL_TIME,
+                employee_code="ENG014",
+                first_name="Kavya",
+                last_name="Iyer",
+                email="kavya.iyer@company.com",
+                department="Engineering",
+                job_title="QA Engineer",
+                hire_date=datetime.now(UTC),
+                role_id=3,
+                password="SecurePass123",
+            )
+
+    def test_contract_with_salary_raises_error(self) -> None:
+        """Test that a contract employee cannot carry an annual salary."""
+        with pytest.raises(ValidationError):
+            EmployeeCreate(
+                employment_type=EmploymentType.CONTRACT,
+                employee_code="CON014",
+                first_name="Rahul",
+                last_name="Verma",
+                email="rahul.verma@company.com",
+                department="Design",
+                job_title="UX Consultant",
+                hire_date=datetime.now(UTC),
+                role_id=3,
+                password="SecurePass123",
+                hourly_rate=Decimal("65.00"),
+                annual_salary=Decimal("90000.00"),
+            )
+
 class TestEmployeeUpdate:
     """Tests for EmployeeUpdate schema."""
 

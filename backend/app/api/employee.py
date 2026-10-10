@@ -10,6 +10,7 @@ from app.api.dependencies import (
 )
 from app.core.security import PasswordHasher
 from app.domain.primitives import DuplicateEmailError, Permission
+from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
 from app.schemas.employee import EmployeeCreate, EmployeeRead, PaginatedEmployees
@@ -61,15 +62,15 @@ def list_employees(
     "",
     response_model=EmployeeRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission(Permission.EMPLOYEE_CREATE))],
 )
 def create_employee(
     data: EmployeeCreate,
+    actor: Employee = Depends(require_permission(Permission.EMPLOYEE_CREATE)),
     employee_service: EmployeeService = Depends(get_employee_service),
 ) -> EmployeeRead:
     """Create a new employee."""
     try:
-        employee = employee_service.create_employee(data)
+        employee = employee_service.create_employee(data, actor)
         return EmployeeRead.model_validate(employee)
     except DuplicateEmailError as e:
         raise HTTPException(

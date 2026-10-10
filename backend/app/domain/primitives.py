@@ -90,6 +90,29 @@ class DuplicateEmailError(Exception):
         super().__init__(f"Employee with email '{email}' already exists")
 
 
+class DuplicateEmployeeCodeError(Exception):
+    """Raised when attempting to create an employee with an existing code."""
+
+    def __init__(self, employee_code: str) -> None:
+        self.employee_code = employee_code
+        super().__init__(f"Employee with code '{employee_code}' already exists")
+
+
+class SelfActionError(Exception):
+    """Raised when a user tries to delete or deactivate their own account."""
+
+    def __init__(self, action: str) -> None:
+        self.action = action
+        super().__init__(f"You cannot {action} your own account")
+
+
+class InvalidEmployeeDataError(Exception):
+    """Raised when a request is well-formed but breaks an employee rule."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class AuthenticationError(Exception):
     """Raised when authentication fails (invalid credentials, inactive user, etc.)."""
 

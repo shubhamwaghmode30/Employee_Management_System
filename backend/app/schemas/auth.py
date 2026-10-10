@@ -40,3 +40,10 @@ class CurrentUserResponse(BaseModel):
     last_name: str
     role: str
     permissions: list[str]
+
+
+class PasswordChange(BaseModel):
+    """Schema for an employee changing their own password."""
+
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=128)

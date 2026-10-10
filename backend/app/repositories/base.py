@@ -45,6 +45,12 @@ class SqlAlchemyRepository(AbstractRepository[ModelT]):
         self.session.refresh(model)
         return model
 
+    def save(self, model: ModelT) -> ModelT:
+        """Flush pending changes to a tracked instance and reload it."""
+        self.session.flush()
+        self.session.refresh(model)
+        return model
+
     def get_by_id(self, id: int | str) -> ModelT | None:
         """Retrieve a model instance by its primary key."""
         return self.session.get(self.model, id)
