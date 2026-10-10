@@ -54,6 +54,6 @@ class SqlAlchemyRepository(AbstractRepository[ModelT]):
         stmt = select(self.model)
         return list(self.session.scalars(stmt).all())
 
-    def _base_query(self) -> Select[tuple[ModelT]]:
+    def _base_query(self) -> Select[ModelT]:
         """Build a base query for the model."""
         return select(self.model)

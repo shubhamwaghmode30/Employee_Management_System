@@ -82,6 +82,6 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         self.session.refresh(employee)
         return employee
 
-    def _base_query(self) -> Select[tuple[Employee]]:
+    def _base_query(self) -> Select[Employee]:
         """Build a base query excluding soft-deleted rows."""
         return super()._base_query().where(Employee.deleted_at.is_(None))
