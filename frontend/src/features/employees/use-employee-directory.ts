@@ -68,6 +68,7 @@ export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = 
 
   return {
     state,
+    pageSize,
     searchText,
     department,
     statusFilter,

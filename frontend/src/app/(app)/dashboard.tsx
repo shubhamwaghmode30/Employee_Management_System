@@ -9,7 +9,7 @@ export default function DashboardScreen() {
     <Dashboard
       onAddEmployee={() => router.push('/employees/new')}
       onOpenDirectory={() => router.navigate('/employees')}
-      onOpenProfile={() => router.navigate('/profile')}
+      onViewEmployee={(employee) => router.push(`/employees/${employee.id}`)}
     />
   );
 }

@@ -1,6 +1,6 @@
+/** Near-square corners: controls and badges 2-3px, panels 4px. */
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  pill: 999,
+  sm: 2,
+  md: 3,
+  lg: 4,
 } as const;

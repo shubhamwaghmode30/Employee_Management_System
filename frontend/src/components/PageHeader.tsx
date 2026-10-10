@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
@@ -37,12 +37,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: typography.fontSize.xxl,
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.md,
+    color: colors.textMuted,
+    fontSize: typography.fontSize.sm,
   },
   actions: {
     flexDirection: 'row',

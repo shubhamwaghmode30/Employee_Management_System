@@ -1,10 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '../../components/Avatar';
-import { colors, elevation, radius, spacing, typography } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 import { EmployeeActions } from './EmployeeActions';
-import { employmentTypeLabels, getFullName } from './employee-labels';
+import { getFullName } from './employee-labels';
 import type { Employee } from './employee-schemas';
+import { EmploymentTypeBadge } from './EmploymentTypeBadge';
 import { StatusBadge } from './StatusBadge';
 
 type EmployeeTableProps = {
@@ -39,13 +40,12 @@ export function EmployeeTable({
           <Text role="columnheader" style={[styles.headerCell, styles.actionsColumn]}>Actions</Text>
         )}
       </View>
-      {employees.map((employee, index) => {
+      {employees.map((employee) => {
         const fullName = getFullName(employee);
-        const isLastRow = index === employees.length - 1;
         return (
-          <View key={employee.id} role="row" style={[styles.row, isLastRow && styles.lastRow]}>
+          <View key={employee.id} role="row" style={styles.row}>
             <View role="cell" style={[styles.nameColumn, styles.nameCell]}>
-              <Avatar name={fullName} size={34} />
+              <Avatar name={fullName} size={32} />
               <View style={styles.nameText}>
                 <Pressable accessibilityRole="link" onPress={() => onViewEmployee(employee)}>
                   <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
@@ -62,9 +62,9 @@ export function EmployeeTable({
             <Text role="cell" style={[styles.cell, styles.column]} numberOfLines={2}>
               {employee.job_title}
             </Text>
-            <Text role="cell" style={[styles.cell, styles.typeColumn]}>
-              {employmentTypeLabels[employee.employment_type]}
-            </Text>
+            <View role="cell" style={styles.typeColumn}>
+              <EmploymentTypeBadge employmentType={employee.employment_type} />
+            </View>
             <View role="cell" style={styles.statusColumn}>
               <StatusBadge isActive={employee.is_active} />
             </View>
@@ -88,26 +88,19 @@ export function EmployeeTable({
 
 const styles = StyleSheet.create({
   table: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
     backgroundColor: colors.surface,
-    boxShadow: elevation.card,
-    overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg - spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  lastRow: {
-    borderBottomWidth: 0,
-  },
   headerRow: {
+    paddingVertical: spacing.sm,
     backgroundColor: colors.surfaceMuted,
   },
   headerCell: {
@@ -130,7 +123,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   name: {
-    color: colors.textPrimary,
+    color: colors.primary,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },

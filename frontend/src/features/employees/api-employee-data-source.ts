@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ApiClient } from '../../api/api-client';
 import type { EmployeeDataSource } from './employee-data-source';
 import { employeeSchema, paginatedEmployeesSchema } from './employee-schemas';
+import { employeeStatsSchema } from './employee-stats-schema';
 
 /** Reads and writes employees through /api/v1/employees. */
 export function createApiEmployeeDataSource(apiClient: ApiClient): EmployeeDataSource {
@@ -31,6 +32,9 @@ export function createApiEmployeeDataSource(apiClient: ApiClient): EmployeeDataS
     },
     listDepartments() {
       return apiClient.request('/employees/departments', { schema: z.array(z.string()) });
+    },
+    getStats() {
+      return apiClient.request('/employees/stats', { schema: employeeStatsSchema });
     },
   };
 }

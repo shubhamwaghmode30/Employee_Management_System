@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   role: {
     alignSelf: 'flex-start',
     marginTop: spacing.xs,
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: 3,
     overflow: 'hidden',

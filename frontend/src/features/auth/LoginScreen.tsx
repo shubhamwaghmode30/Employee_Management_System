@@ -41,7 +41,7 @@ export function LoginScreen({ signIn, notice }: LoginScreenProps) {
               <Text style={styles.pitchTitle}>Your people, organised.</Text>
               {highlights.map((highlight) => (
                 <View key={highlight.text} style={styles.highlight}>
-                  <Ionicons name={highlight.icon} size={20} color={colors.sidebarText} />
+                  <Ionicons name={highlight.icon} size={20} color={colors.brandPanelText} />
                   <Text style={styles.highlightText}>{highlight.text}</Text>
                 </View>
               ))}
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     justifyContent: 'space-between',
     padding: spacing.xxl,
-    backgroundColor: colors.sidebar,
+    backgroundColor: colors.brandPanel,
   },
   brandHeader: {
     flexDirection: 'row',
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   highlightText: {
     flex: 1,
-    color: colors.sidebarText,
+    color: colors.brandPanelText,
     fontSize: typography.fontSize.md,
   },
   logo: {

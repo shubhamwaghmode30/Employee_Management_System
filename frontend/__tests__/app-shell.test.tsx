@@ -56,9 +56,10 @@ describe('AppShell on desktop', () => {
     await renderShell();
 
     expect(screen.getByRole('link', { name: 'Employees' })).toBeTruthy();
-    expect(screen.getByText('Priya Sharma')).toBeTruthy();
-    expect(screen.getByText('HR Manager')).toBeTruthy();
-    expect(screen.getByText('PS', { includeHiddenElements: true })).toBeTruthy();
+    // Named in both the sidebar user menu and the header.
+    expect(screen.getAllByText('Priya Sharma')).toHaveLength(2);
+    expect(screen.getAllByText('HR Manager')).toHaveLength(2);
+    expect(screen.getAllByText('PS', { includeHiddenElements: true })).toHaveLength(2);
     expect(screen.queryByText('PS')).toBeNull();
     expect(screen.getByText('Employee directory')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Open navigation menu' })).toBeNull();

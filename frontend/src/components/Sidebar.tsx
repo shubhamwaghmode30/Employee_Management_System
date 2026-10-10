@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import type { SessionUser } from '../types/session-user';
 import { BrandMark } from './BrandMark';
 import { NavigationList } from './NavigationList';
@@ -23,14 +23,14 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   );
 }
 
-const sidebarWidth = 264;
+const sidebarWidth = 248;
 
 const styles = StyleSheet.create({
   sidebar: {
     width: sidebarWidth,
-    gap: spacing.xl,
-    padding: spacing.md,
-    backgroundColor: colors.sidebar,
+    backgroundColor: colors.surface,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
   navigation: {
     flex: 1,

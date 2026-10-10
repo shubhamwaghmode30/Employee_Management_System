@@ -20,6 +20,7 @@ export function NavigationList({ onNavigate }: NavigationListProps) {
 
   return (
     <View role="navigation" aria-label="Main navigation" style={styles.list}>
+      <Text style={styles.sectionLabel}>MAIN MENU</Text>
       {navigationItems.map((item) => {
         const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
         return (
@@ -31,7 +32,8 @@ export function NavigationList({ onNavigate }: NavigationListProps) {
             onPress={() => handleNavigate(item)}
             style={({ pressed }) => [styles.item, isActive && styles.itemActive, pressed && styles.itemPressed]}
           >
-            <Ionicons name={item.icon} size={20} color={isActive ? colors.onPrimary : colors.sidebarMuted} />
+            <View aria-hidden style={[styles.marker, isActive && styles.markerActive]} />
+            <Ionicons name={item.icon} size={18} color={isActive ? colors.primary : colors.textMuted} />
             <Text style={[styles.label, isActive && styles.labelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -42,29 +44,48 @@ export function NavigationList({ onNavigate }: NavigationListProps) {
 
 const styles = StyleSheet.create({
   list: {
-    gap: spacing.xs,
+    gap: 2,
+    paddingHorizontal: spacing.sm + spacing.xs,
+    paddingTop: spacing.md,
+  },
+  sectionLabel: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    letterSpacing: 0.8,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm + spacing.xs,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs,
+    paddingRight: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    overflow: 'hidden',
   },
   itemActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primarySubtle,
   },
   itemPressed: {
-    backgroundColor: colors.sidebarRaised,
+    backgroundColor: colors.surfaceHover,
+  },
+  marker: {
+    width: 3,
+    alignSelf: 'stretch',
+    marginRight: spacing.xs,
+  },
+  markerActive: {
+    backgroundColor: colors.primary,
   },
   label: {
-    color: colors.sidebarText,
-    fontSize: typography.fontSize.md,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
   },
   labelActive: {
-    color: colors.onPrimary,
+    color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
   },
 });

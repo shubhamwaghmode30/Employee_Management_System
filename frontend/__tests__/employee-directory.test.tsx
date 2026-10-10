@@ -143,7 +143,7 @@ describe('EmployeeDirectory role-based controls', () => {
 describe('EmployeeDirectory deletion', () => {
   it('deletes only after confirmation and refreshes the list', async () => {
     const { deleteEmployee } = await renderDirectory({ role: 'ADMIN' });
-    await screen.findByText('Page 1 of 3 · 24 employees');
+    await screen.findByText('Showing 1–10 of 24 employees');
 
     await fireEvent.press(screen.getByRole('button', { name: 'Delete Emily Carter' }));
     expect(screen.getByText('Delete Emily Carter?')).toBeTruthy();
@@ -151,7 +151,7 @@ describe('EmployeeDirectory deletion', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
 
-    expect(await screen.findByText('Page 1 of 3 · 23 employees')).toBeTruthy();
+    expect(await screen.findByText('Showing 1–10 of 23 employees')).toBeTruthy();
     expect(screen.queryByText('Emily Carter')).toBeNull();
     expect(deleteEmployee).toHaveBeenCalledTimes(1);
   });
@@ -198,20 +198,20 @@ describe('EmployeeDirectory deletion', () => {
 describe('EmployeeDirectory pagination', () => {
   it('moves between pages and disables buttons at the ends', async () => {
     const { listEmployees } = await renderDirectory();
-    await screen.findByText('Page 1 of 3 · 24 employees');
+    await screen.findByText('Showing 1–10 of 24 employees');
 
     expect(screen.getByRole('button', { name: 'Previous page', disabled: true })).toBeTruthy();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Next page' }));
-    expect(await screen.findByText('Page 2 of 3 · 24 employees')).toBeTruthy();
+    expect(await screen.findByText('Showing 11–20 of 24 employees')).toBeTruthy();
     expect(listEmployees).toHaveBeenLastCalledWith({ page: 2, page_size: 10 });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Next page' }));
-    expect(await screen.findByText('Page 3 of 3 · 24 employees')).toBeTruthy();
+    expect(await screen.findByText('Showing 21–24 of 24 employees')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Next page', disabled: true })).toBeTruthy();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Previous page' }));
-    expect(await screen.findByText('Page 2 of 3 · 24 employees')).toBeTruthy();
+    expect(await screen.findByText('Showing 11–20 of 24 employees')).toBeTruthy();
   });
 });
 
@@ -222,7 +222,7 @@ describe('EmployeeDirectory filters', () => {
 
     await fireEvent.changeText(screen.getByLabelText('Search employees'), 'kenji');
 
-    expect(await screen.findByText('Page 1 of 1 · 1 employee')).toBeTruthy();
+    expect(await screen.findByText('Showing 1–1 of 1 employee')).toBeTruthy();
     expect(screen.getByText('Kenji Tanaka')).toBeTruthy();
     expect(listEmployees).toHaveBeenLastCalledWith({ page: 1, page_size: 10, q: 'kenji' });
   });

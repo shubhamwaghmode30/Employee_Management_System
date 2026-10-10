@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { useBreakpoint } from '../hooks/use-breakpoint';
 import { colors } from '../theme';
 import type { SessionUser } from '../types/session-user';
+import { HeaderBar } from './HeaderBar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { Sidebar } from './Sidebar';
-import { TopBar } from './TopBar';
 
 type AppShellProps = {
   user: SessionUser;
@@ -14,43 +14,38 @@ type AppShellProps = {
   children: ReactNode;
 };
 
-/** Desktop gets a persistent sidebar; tablet and mobile get a top bar with a drawer. */
+/** Desktop gets a persistent sidebar; tablet and mobile open the same navigation in a drawer. */
 export function AppShell({ user, onLogout, children }: AppShellProps) {
-  const breakpoint = useBreakpoint();
+  const isDesktop = useBreakpoint() === 'desktop';
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  if (breakpoint === 'desktop') {
-    return (
-      <View style={styles.desktop}>
-        <Sidebar user={user} onLogout={onLogout} />
+  return (
+    <View style={styles.shell}>
+      {isDesktop && <Sidebar user={user} onLogout={onLogout} />}
+      <View style={styles.main}>
+        <HeaderBar user={user} isCompact={!isDesktop} onOpenNavigation={() => setIsDrawerOpen(true)} />
         <View style={styles.content}>{children}</View>
       </View>
-    );
-  }
-
-  return (
-    <View style={styles.compact}>
-      <TopBar user={user} onOpenNavigation={() => setIsDrawerOpen(true)} />
-      <View style={styles.content}>{children}</View>
-      <NavigationDrawer
-        isOpen={isDrawerOpen}
-        user={user}
-        onClose={() => setIsDrawerOpen(false)}
-        onLogout={onLogout}
-      />
+      {!isDesktop && (
+        <NavigationDrawer
+          isOpen={isDrawerOpen}
+          user={user}
+          onClose={() => setIsDrawerOpen(false)}
+          onLogout={onLogout}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  desktop: {
+  shell: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: colors.background,
   },
-  compact: {
+  main: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     flex: 1,

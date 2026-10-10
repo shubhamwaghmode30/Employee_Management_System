@@ -1,7 +1,7 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, spacing } from '../theme';
+import { colors, elevation } from '../theme';
 import type { SessionUser } from '../types/session-user';
 import { BrandMark } from './BrandMark';
 import { NavigationList } from './NavigationList';
@@ -25,12 +25,7 @@ export function NavigationDrawer({ isOpen, user, onClose, onLogout }: Navigation
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
       <View aria-modal style={styles.container}>
-        <View
-          style={[
-            styles.panel,
-            { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.md },
-          ]}
-        >
+        <View style={[styles.panel, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <BrandMark />
           <View style={styles.navigation}>
             <NavigationList onNavigate={onClose} />
@@ -48,7 +43,7 @@ export function NavigationDrawer({ isOpen, user, onClose, onLogout }: Navigation
   );
 }
 
-const panelWidth = 288;
+const panelWidth = 280;
 
 const styles = StyleSheet.create({
   container: {
@@ -58,9 +53,8 @@ const styles = StyleSheet.create({
   panel: {
     width: panelWidth,
     maxWidth: '85%',
-    gap: spacing.xl,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.sidebar,
+    backgroundColor: colors.surface,
+    boxShadow: elevation.raised,
   },
   navigation: {
     flex: 1,

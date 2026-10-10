@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { hasPermission } from '../../auth/permissions';
 import { useSessionUser } from '../../auth/session-user-context';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusMessage } from '../../components/StatusMessage';
@@ -97,6 +98,7 @@ export function EmployeeDirectory({
         {breakpoint === 'mobile' ? <EmployeeCardList {...listProps} /> : <EmployeeTable {...listProps} />}
         <PaginationControls
           page={directory.page}
+          pageSize={directory.pageSize}
           totalPages={directory.totalPages}
           totalItems={state.data.total}
           onPreviousPage={directory.goToPreviousPage}
@@ -110,21 +112,31 @@ export function EmployeeDirectory({
     <ScrollView contentContainerStyle={styles.content}>
       <PageHeader
         title="Employees"
-        subtitle="Search, filter and manage everyone in the organisation."
+        subtitle="Search, filter and manage everyone in the organisation"
         actions={
           canCreate ? <Button label="Add employee" icon="person-add-outline" onPress={onCreateEmployee} /> : undefined
         }
       />
-      <EmployeeFilters
-        departments={departments}
-        searchText={directory.searchText}
-        department={directory.department}
-        statusFilter={directory.statusFilter}
-        onSearchTextChange={directory.changeSearchText}
-        onDepartmentChange={directory.changeDepartment}
-        onStatusFilterChange={directory.changeStatusFilter}
-      />
-      {renderResults(directory.state)}
+      <Card
+        title="All employees"
+        subtitle={
+          directory.state.status === 'success'
+            ? `${directory.state.data.total} ${directory.hasActiveFilters ? 'matching' : 'total'} records`
+            : 'Loading records'
+        }
+        isFlush
+      >
+        <EmployeeFilters
+          departments={departments}
+          searchText={directory.searchText}
+          department={directory.department}
+          statusFilter={directory.statusFilter}
+          onSearchTextChange={directory.changeSearchText}
+          onDepartmentChange={directory.changeDepartment}
+          onStatusFilterChange={directory.changeStatusFilter}
+        />
+        {renderResults(directory.state)}
+      </Card>
       <ConfirmDialog
         isOpen={deletion.pendingEmployee !== null}
         title={deletion.pendingEmployee === null ? '' : `Delete ${getFullName(deletion.pendingEmployee)}?`}
@@ -142,9 +154,9 @@ export function EmployeeDirectory({
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    maxWidth: 1280,
+    maxWidth: 1320,
     alignSelf: 'center',
-    gap: spacing.lg,
+    gap: spacing.lg - spacing.xs,
     padding: spacing.lg,
   },
 });

@@ -1,10 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '../../components/Avatar';
-import { colors, elevation, radius, spacing, typography } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 import { EmployeeActions } from './EmployeeActions';
-import { employmentTypeLabels, getFullName } from './employee-labels';
+import { getFullName } from './employee-labels';
 import type { Employee } from './employee-schemas';
+import { EmploymentTypeBadge } from './EmploymentTypeBadge';
 import { StatusBadge } from './StatusBadge';
 
 type EmployeeCardListProps = {
@@ -44,9 +45,10 @@ export function EmployeeCardList({
             </View>
             <Text style={styles.email}>{employee.email}</Text>
             <View style={styles.footer}>
-              <Text style={styles.secondary}>
-                {employmentTypeLabels[employee.employment_type]} · {employee.employee_code}
-              </Text>
+              <View style={styles.meta}>
+                <EmploymentTypeBadge employmentType={employee.employment_type} />
+                <Text style={styles.secondary}>{employee.employee_code}</Text>
+              </View>
               <EmployeeActions
                 employeeName={fullName}
                 canEdit={canEdit}
@@ -64,16 +66,18 @@ export function EmployeeCardList({
 
 const styles = StyleSheet.create({
   list: {
-    gap: spacing.sm + spacing.xs,
+    backgroundColor: colors.surface,
   },
   card: {
     gap: spacing.sm,
     padding: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    boxShadow: elevation.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   header: {
     flexDirection: 'row',
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    color: colors.textPrimary,
+    color: colors.primary,
     fontSize: typography.fontSize.md,
     fontWeight: typography.fontWeight.semibold,
   },

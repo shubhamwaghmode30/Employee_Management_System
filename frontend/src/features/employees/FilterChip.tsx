@@ -19,7 +19,7 @@ export function FilterChip({ label, isSelected, isDisabled = false, onPress }: F
       style={({ pressed }) => [
         styles.chip,
         isSelected && styles.chipSelected,
-        pressed && styles.chipPressed,
+        pressed && !isSelected && styles.chipPressed,
         isDisabled && styles.chipDisabled,
       ]}
     >
@@ -32,24 +32,24 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm + spacing.xs,
-    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 1,
     backgroundColor: colors.surface,
   },
   chipSelected: {
-    borderColor: colors.primary,
+    borderColor: colors.primaryBorder,
     backgroundColor: colors.primarySubtle,
   },
   chipPressed: {
-    opacity: 0.7,
+    backgroundColor: colors.surfaceHover,
   },
   chipDisabled: {
     opacity: 0.5,
   },
   label: {
     color: colors.textSecondary,
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs + 1,
     fontWeight: typography.fontWeight.medium,
   },
   labelSelected: {

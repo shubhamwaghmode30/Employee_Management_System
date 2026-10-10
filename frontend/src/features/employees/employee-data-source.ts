@@ -2,6 +2,7 @@ import type { ApiError } from '../../api/api-error';
 import type { Result } from '../../types/result';
 import type { EmployeeCreateInput, EmployeeUpdateInput } from './employee-inputs';
 import type { Employee, PaginatedEmployees } from './employee-schemas';
+import type { EmployeeStats } from './employee-stats-schema';
 
 /** Query parameters of GET /api/v1/employees, named as the API names them. */
 export type EmployeeListParams = {
@@ -23,4 +24,5 @@ export type EmployeeDataSource = {
   updateEmployee(id: string, input: EmployeeUpdateInput): Promise<Result<Employee, ApiError>>;
   deleteEmployee(id: string): Promise<Result<null, ApiError>>;
   listDepartments(): Promise<Result<string[], ApiError>>;
+  getStats(): Promise<Result<EmployeeStats, ApiError>>;
 };

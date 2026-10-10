@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, typography } from '../theme';
+import { colors, radius, typography } from '../theme';
 
 type AvatarProps = {
   name: string;
@@ -27,14 +27,14 @@ function pickTone(name: string): string {
   return avatarTones[hash] ?? colors.primary;
 }
 
-/** Initials in a coloured circle; decorative, so hidden from screen readers. */
+/** Initials on a coloured tile; decorative, so hidden from screen readers. */
 export function Avatar({ name, size = 40 }: AvatarProps) {
   return (
     <View
       aria-hidden
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: pickTone(name) },
+        { width: size, height: size, borderRadius: radius.lg, backgroundColor: pickTone(name) },
       ]}
     >
       <Text style={[styles.initials, { fontSize: Math.round(size * 0.38) }]}>{getInitials(name)}</Text>

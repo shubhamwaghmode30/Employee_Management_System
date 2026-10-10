@@ -5,6 +5,7 @@ import { hasPermission } from '../../auth/permissions';
 import { getRoleName, roleLabels } from '../../auth/roles';
 import { useSessionUser } from '../../auth/session-user-context';
 import { Avatar } from '../../components/Avatar';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -14,6 +15,8 @@ import { DetailRow } from './DetailRow';
 import { useEmployeeDataSource } from './employee-data-source-context';
 import { employmentTypeLabels, formatDate, formatMoney, getFullName } from './employee-labels';
 import type { Employee } from './employee-schemas';
+import { EmploymentTypeBadge } from './EmploymentTypeBadge';
+import { RoleBadge } from './RoleBadge';
 import { StatusBadge } from './StatusBadge';
 import { useEmployeeDeletion } from './use-employee-deletion';
 import { useEmployeeDetails } from './use-employee-details';
@@ -59,6 +62,14 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
   const isSelf = employee.id === user.id;
   const canEdit = hasPermission(user, 'EMPLOYEE_UPDATE');
   const canDelete = hasPermission(user, 'EMPLOYEE_DELETE') && !isSelf;
+  const payLabel =
+    employee.employment_type === 'FULL_TIME'
+      ? employee.annual_salary === null
+        ? 'Not set'
+        : formatMoney(employee.annual_salary)
+      : employee.hourly_rate === null
+        ? 'Not set'
+        : `${formatMoney(employee.hourly_rate)}/hr`;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -68,7 +79,7 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
       </Pressable>
 
       <View style={styles.profile}>
-        <Avatar name={fullName} size={72} />
+        <Avatar name={fullName} size={64} />
         <View style={styles.identity}>
           <Text accessibilityRole="header" style={styles.title}>
             {fullName}
@@ -78,7 +89,9 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
           </Text>
           <View style={styles.badges}>
             <StatusBadge isActive={employee.is_active} />
-            {isSelf && <Text style={styles.selfTag}>This is you</Text>}
+            <EmploymentTypeBadge employmentType={employee.employment_type} />
+            <RoleBadge roleId={employee.role_id} />
+            {isSelf && <Badge label="This is you" tone="blue" />}
           </View>
         </View>
         {(canEdit || canDelete) && (
@@ -96,6 +109,13 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
         )}
       </View>
 
+      <View style={styles.facts}>
+        <Fact label="Employee code" value={employee.employee_code} />
+        <Fact label="Hire date" value={formatDate(employee.hire_date)} />
+        <Fact label={employee.employment_type === 'FULL_TIME' ? 'Annual salary' : 'Hourly rate'} value={payLabel} />
+        <Fact label="Department" value={employee.department} />
+      </View>
+
       <View style={styles.sections}>
         <View style={styles.column}>
           <Card title="Contact">
@@ -109,26 +129,14 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
         </View>
         <View style={styles.column}>
           <Card title="Employment">
-            <DetailRow label="Employee code" value={employee.employee_code} />
             <DetailRow label="Employment type" value={employmentTypeLabels[employee.employment_type]} />
-            <DetailRow label="Hire date" value={formatDate(employee.hire_date)} />
             <DetailRow label="Role" value={roleName === null ? 'Unknown role' : roleLabels[roleName]} />
-            {employee.employment_type === 'FULL_TIME' ? (
+            <DetailRow label="Status" value={employee.is_active ? 'Active, can sign in' : 'Inactive, cannot sign in'} />
+            {employee.employment_type === 'CONTRACT' && (
               <DetailRow
-                label="Annual salary"
-                value={employee.annual_salary === null ? 'Not set' : formatMoney(employee.annual_salary)}
+                label="Contract end date"
+                value={employee.contract_end_date === null ? 'Open-ended' : formatDate(employee.contract_end_date)}
               />
-            ) : (
-              <>
-                <DetailRow
-                  label="Hourly rate"
-                  value={employee.hourly_rate === null ? 'Not set' : `${formatMoney(employee.hourly_rate)}/hr`}
-                />
-                <DetailRow
-                  label="Contract end date"
-                  value={employee.contract_end_date === null ? 'Open-ended' : formatDate(employee.contract_end_date)}
-                />
-              </>
             )}
           </Card>
         </View>
@@ -148,10 +156,26 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
   );
 }
 
+type FactProps = {
+  label: string;
+  value: string;
+};
+
+function Fact({ label, value }: FactProps) {
+  return (
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={styles.fact}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={styles.factValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    maxWidth: 1040,
+    maxWidth: 1120,
     alignSelf: 'center',
     gap: spacing.lg,
     padding: spacing.lg,
@@ -174,8 +198,10 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     padding: spacing.lg,
     borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
+    borderTopWidth: 3,
+    borderTopColor: colors.primary,
     backgroundColor: colors.surface,
     boxShadow: elevation.card,
   },
@@ -199,9 +225,35 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
-  selfTag: {
-    color: colors.primary,
+  facts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  fact: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 160,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  factLabel: {
+    color: colors.textMuted,
     fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  factValue: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.md,
     fontWeight: typography.fontWeight.semibold,
   },
   actions: {

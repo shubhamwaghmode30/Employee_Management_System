@@ -56,7 +56,7 @@ export function Button({
         <ActivityIndicator color={labelColor} />
       ) : (
         <>
-          {icon !== undefined && <Ionicons name={icon} size={isCompact ? 16 : 18} color={labelColor} />}
+          {icon !== undefined && <Ionicons name={icon} size={isCompact ? 14 : 16} color={labelColor} />}
           <Text style={[styles.label, isCompact && styles.compactLabel, { color: labelColor }]}>{label}</Text>
         </>
       )}
@@ -66,7 +66,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 42,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -77,9 +77,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   compact: {
-    minHeight: 32,
+    minHeight: 30,
     paddingHorizontal: spacing.sm + spacing.xs,
-    borderRadius: radius.sm,
   },
   primary: {
     backgroundColor: colors.primary,
@@ -105,10 +104,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   label: {
-    fontSize: typography.fontSize.md,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },
   compactLabel: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs,
   },
 });

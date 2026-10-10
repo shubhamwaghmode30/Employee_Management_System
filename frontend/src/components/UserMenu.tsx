@@ -15,7 +15,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
   return (
     <View style={styles.container}>
       <View style={styles.identity}>
-        <Avatar name={user.fullName} />
+        <Avatar name={user.fullName} size={36} />
         <View style={styles.details}>
           <Text style={styles.name} numberOfLines={1}>
             {user.fullName}
@@ -34,7 +34,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
         onPress={onLogout}
         style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
       >
-        <Ionicons name="log-out-outline" size={18} color={colors.sidebarText} />
+        <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.logoutText}>Log out</Text>
       </Pressable>
     </View>
@@ -43,46 +43,52 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.sidebarRaised,
-    paddingTop: spacing.md,
+    gap: spacing.sm + spacing.xs,
+    margin: spacing.sm + spacing.xs,
+    padding: spacing.sm + spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
   },
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm + spacing.xs,
+    gap: spacing.sm + 2,
   },
   details: {
     flex: 1,
   },
   name: {
-    color: colors.onPrimary,
-    fontSize: typography.fontSize.md,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },
   role: {
-    color: colors.sidebarText,
-    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
   },
   email: {
-    color: colors.sidebarMuted,
+    color: colors.textMuted,
     fontSize: typography.fontSize.xs,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs + 2,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.sidebarRaised,
+    paddingVertical: spacing.xs + 2,
+    backgroundColor: colors.surface,
   },
   logoutButtonPressed: {
-    opacity: 0.8,
+    backgroundColor: colors.surfaceHover,
   },
   logoutText: {
-    color: colors.sidebarText,
+    color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
   },

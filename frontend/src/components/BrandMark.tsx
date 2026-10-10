@@ -9,33 +9,47 @@ export function BrandMark() {
       <View aria-hidden style={styles.logo}>
         <Ionicons name="briefcase" size={18} color={colors.onPrimary} />
       </View>
-      <Text accessibilityRole="header" style={styles.title}>
-        Employee Management System
-      </Text>
+      <View style={styles.text}>
+        <Text accessibilityRole="header" style={styles.title} numberOfLines={2}>
+          Employee Management System
+        </Text>
+        <Text style={styles.subtitle}>HR workspace</Text>
+      </View>
     </View>
   );
 }
+
+const logoSize = 36;
 
 const styles = StyleSheet.create({
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm + spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 64,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   logo: {
-    width: 36,
-    height: 36,
+    width: logoSize,
+    height: logoSize,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.primary,
   },
-  title: {
+  text: {
     flex: 1,
-    color: colors.onPrimary,
-    fontSize: typography.fontSize.md,
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
+  },
+  subtitle: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
   },
 });

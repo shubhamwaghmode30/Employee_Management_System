@@ -6,41 +6,65 @@ import { colors, elevation, radius, spacing, typography } from '../../theme';
 type StatCardProps = {
   label: string;
   value: number;
+  caption: string;
   icon: keyof typeof Ionicons.glyphMap;
-  tone: { foreground: string; background: string };
+  tone: { accent: string; background: string };
 };
 
-export function StatCard({ label, value, icon, tone }: StatCardProps) {
+/** KPI tile: label, headline value and a one-line caption, keyed by an accent bar. */
+export function StatCard({ label, value, caption, icon, tone }: StatCardProps) {
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}`} style={styles.card}>
-      <View style={[styles.icon, { backgroundColor: tone.background }]}>
-        <Ionicons name={icon} size={22} color={tone.foreground} />
-      </View>
-      <View style={styles.text}>
+    <View accessible accessibilityLabel={`${label}: ${value}. ${caption}`} style={styles.card}>
+      <View aria-hidden style={[styles.accent, { backgroundColor: tone.accent }]} />
+      <View style={styles.body}>
+        <View style={styles.header}>
+          <Text style={styles.label}>{label}</Text>
+          <View style={[styles.icon, { backgroundColor: tone.background }]}>
+            <Ionicons name={icon} size={18} color={tone.accent} />
+          </View>
+        </View>
         <Text style={styles.value}>{value.toLocaleString('en-US')}</Text>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.caption}>{caption}</Text>
       </View>
     </View>
   );
 }
 
-const iconSize = 44;
+const iconSize = 32;
 
 const styles = StyleSheet.create({
   card: {
     flexGrow: 1,
     flexShrink: 1,
-    // Two cards per row on phones, four on wide screens.
-    flexBasis: 150,
+    // Two tiles per row on phones, four on wide screens.
+    flexBasis: 160,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + spacing.xs,
-    padding: spacing.md,
     borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     boxShadow: elevation.card,
+    overflow: 'hidden',
+  },
+  accent: {
+    width: 4,
+  },
+  body: {
+    flex: 1,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  label: {
+    flexShrink: 1,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
   },
   icon: {
     width: iconSize,
@@ -49,17 +73,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.md,
   },
-  text: {
-    flexShrink: 1,
-    gap: 2,
-  },
   value: {
     color: colors.textPrimary,
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize.xxl,
     fontWeight: typography.fontWeight.bold,
   },
-  label: {
+  caption: {
     color: colors.textMuted,
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs,
   },
 });

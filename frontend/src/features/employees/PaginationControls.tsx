@@ -5,6 +5,7 @@ import { colors, spacing, typography } from '../../theme';
 
 type PaginationControlsProps = {
   page: number;
+  pageSize: number;
   totalPages: number;
   totalItems: number;
   onPreviousPage: () => void;
@@ -13,15 +14,19 @@ type PaginationControlsProps = {
 
 export function PaginationControls({
   page,
+  pageSize,
   totalPages,
   totalItems,
   onPreviousPage,
   onNextPage,
 }: PaginationControlsProps) {
+  const firstItem = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastItem = Math.min(page * pageSize, totalItems);
+
   return (
     <View style={styles.container}>
       <Text style={styles.summary}>
-        Page {page} of {totalPages} · {totalItems} {totalItems === 1 ? 'employee' : 'employees'}
+        Showing {firstItem}–{lastItem} of {totalItems} {totalItems === 1 ? 'employee' : 'employees'}
       </Text>
       <View style={styles.buttons}>
         <Button
@@ -33,6 +38,9 @@ export function PaginationControls({
           isDisabled={page <= 1}
           onPress={onPreviousPage}
         />
+        <Text style={styles.page}>
+          Page {page} of {totalPages}
+        </Text>
         <Button
           label="Next"
           accessibilityLabel="Next page"
@@ -53,6 +61,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg - spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.surfaceMuted,
   },
   summary: {
     color: colors.textSecondary,
@@ -60,6 +71,11 @@ const styles = StyleSheet.create({
   },
   buttons: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
+  },
+  page: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
   },
 });

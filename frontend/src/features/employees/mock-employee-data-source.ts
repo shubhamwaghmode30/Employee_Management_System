@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 import type { ApiError } from '../../api/api-error';
+import { roleIdsByName, roleNames } from '../../auth/roles';
 import type { Result } from '../../types/result';
 import type { EmployeeDataSource, EmployeeListParams } from './employee-data-source';
 import type { EmployeeCreateInput, EmployeeUpdateInput } from './employee-inputs';
 import { type Employee, employeeSchema } from './employee-schemas';
+import type { EmployeeStats } from './employee-stats-schema';
 import mockEmployees from './mock-employees.json';
 
 type MockEmployeeDataSourceOptions = {
@@ -145,6 +147,37 @@ export function createMockEmployeeDataSource({
         value: [...new Set(employees.map((employee) => employee.department))].sort(),
       }));
     },
+
+    getStats() {
+      return respond(() => ({ ok: true, value: summarise(employees) }));
+    },
+  };
+}
+
+/** Same figures and ordering as EmployeeService.get_stats. */
+function summarise(employees: readonly Employee[]): EmployeeStats {
+  const departmentCounts = new Map<string, number>();
+  for (const employee of employees) {
+    departmentCounts.set(employee.department, (departmentCounts.get(employee.department) ?? 0) + 1);
+  }
+  const active = employees.filter((employee) => employee.is_active).length;
+  const fullTime = employees.filter((employee) => employee.employment_type === 'FULL_TIME').length;
+  return {
+    total: employees.length,
+    active,
+    inactive: employees.length - active,
+    full_time: fullTime,
+    contract: employees.length - fullTime,
+    by_department: [...departmentCounts.entries()]
+      .map(([department, count]) => ({ department, count }))
+      .sort((first, second) => second.count - first.count || first.department.localeCompare(second.department)),
+    by_role: roleNames
+      .map((role) => ({
+        role,
+        count: employees.filter((employee) => employee.role_id === roleIdsByName[role]).length,
+      }))
+      .filter((entry) => entry.count > 0),
+    recent_hires: [...employees].sort((first, second) => second.hire_date.localeCompare(first.hire_date)).slice(0, 5),
   };
 }
 

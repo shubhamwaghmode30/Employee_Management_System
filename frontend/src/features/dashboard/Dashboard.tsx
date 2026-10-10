@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { hasPermission } from '../../auth/permissions';
 import { roleLabels } from '../../auth/roles';
@@ -7,16 +7,22 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusMessage } from '../../components/StatusMessage';
-import { colors, spacing, typography } from '../../theme';
+import { useBreakpoint } from '../../hooks/use-breakpoint';
+import { colors, spacing } from '../../theme';
 import { useEmployeeDataSource } from '../employees/employee-data-source-context';
-import { DepartmentBreakdown } from './DepartmentBreakdown';
+import type { Employee } from '../employees/employee-schemas';
+import type { EmployeeStats } from '../employees/employee-stats-schema';
+import { ActiveRateMeter } from './ActiveRateMeter';
+import { CompositionBar } from './CompositionBar';
+import { DepartmentBarChart } from './DepartmentBarChart';
+import { RecentHires } from './RecentHires';
 import { StatCard } from './StatCard';
 import { useDashboardStats } from './use-dashboard-stats';
 
 type DashboardProps = {
   onAddEmployee: () => void;
   onOpenDirectory: () => void;
-  onOpenProfile: () => void;
+  onViewEmployee: (employee: Employee) => void;
 };
 
 function getGreeting(hour: number): string {
@@ -26,91 +32,117 @@ function getGreeting(hour: number): string {
   return hour < 17 ? 'Good afternoon' : 'Good evening';
 }
 
-export function Dashboard({ onAddEmployee, onOpenDirectory, onOpenProfile }: DashboardProps) {
+function percentOf(part: number, total: number): string {
+  return `${total === 0 ? 0 : Math.round((part / total) * 100)}%`;
+}
+
+export function Dashboard({ onAddEmployee, onOpenDirectory, onViewEmployee }: DashboardProps) {
   const user = useSessionUser();
+  const isCompact = useBreakpoint() === 'mobile';
   const dashboard = useDashboardStats(useEmployeeDataSource());
   const canCreate = hasPermission(user, 'EMPLOYEE_CREATE');
 
-  function renderStats() {
-    const { state } = dashboard;
-    if (state.status === 'loading') {
-      return <StatusMessage title="Loading dashboard…" isLoading />;
-    }
-    if (state.status === 'error') {
-      return (
-        <StatusMessage
-          title="Dashboard could not be loaded"
-          description={state.error.message}
-          actionLabel="Try again"
-          onAction={dashboard.reload}
-        />
-      );
-    }
-    const { stats } = state;
+  function renderStats(stats: EmployeeStats) {
+    const largestDepartment = stats.by_department[0];
     return (
       <>
         <View style={styles.statGrid}>
           <StatCard
             label="Total employees"
             value={stats.total}
-            icon="people"
-            tone={{ foreground: colors.primary, background: colors.primarySubtle }}
+            caption={`${stats.full_time} full time · ${stats.contract} contract`}
+            icon="people-outline"
+            tone={{ accent: colors.primary, background: colors.primarySubtle }}
           />
           <StatCard
             label="Active"
             value={stats.active}
-            icon="checkmark-circle"
-            tone={{ foreground: colors.success, background: colors.successSubtle }}
+            caption={`${percentOf(stats.active, stats.total)} of the workforce`}
+            icon="checkmark-circle-outline"
+            tone={{ accent: colors.successMark, background: colors.successSubtle }}
           />
           <StatCard
             label="Inactive"
             value={stats.inactive}
-            icon="pause-circle"
-            tone={{ foreground: colors.warning, background: colors.warningSubtle }}
+            caption="Cannot sign in until reactivated"
+            icon="pause-circle-outline"
+            tone={{ accent: colors.warningMark, background: colors.warningSubtle }}
           />
           <StatCard
             label="Departments"
-            value={stats.departments.length}
-            icon="business"
-            tone={{ foreground: colors.textSecondary, background: colors.background }}
+            value={stats.by_department.length}
+            caption={
+              largestDepartment === undefined ? 'None yet' : `Largest: ${largestDepartment.department}`
+            }
+            icon="business-outline"
+            tone={{ accent: colors.accentViolet, background: colors.accentVioletSubtle }}
           />
         </View>
+
         <View style={styles.panels}>
           <View style={styles.widePanel}>
-            <Card title="Headcount by department">
-              <DepartmentBreakdown departments={stats.departments} total={stats.total} />
+            <Card title="Headcount by department" subtitle="Employees per department, excluding deleted records">
+              <DepartmentBarChart departments={stats.by_department} total={stats.total} />
             </Card>
           </View>
           <View style={styles.narrowPanel}>
-            <Card title="Quick actions">
-              <Text style={styles.hint}>Jump straight to the tasks you do most.</Text>
-              {canCreate && <Button label="Add employee" icon="person-add-outline" onPress={onAddEmployee} />}
-              <Button
-                label="Browse directory"
-                icon="people-outline"
-                variant="secondary"
-                onPress={onOpenDirectory}
+            <Card title="Workforce composition" subtitle="How the organisation is made up">
+              <ActiveRateMeter active={stats.active} total={stats.total} />
+              <View style={styles.divider} />
+              <CompositionBar
+                title="Employment type"
+                segments={[
+                  { label: 'Full time', count: stats.full_time },
+                  { label: 'Contract', count: stats.contract },
+                ]}
               />
-              <Button
-                label="My profile"
-                icon="person-circle-outline"
-                variant="secondary"
-                onPress={onOpenProfile}
+              <View style={styles.divider} />
+              <CompositionBar
+                title="Roles"
+                segments={(['ADMIN', 'HR_MANAGER', 'EMPLOYEE'] as const).map((role) => ({
+                  label: roleLabels[role],
+                  count: stats.by_role.find((entry) => entry.role === role)?.count ?? 0,
+                }))}
               />
             </Card>
           </View>
         </View>
+
+        <Card
+          title="Recent hires"
+          subtitle="The five most recent start dates"
+          isFlush
+          action={<Button label="View all" variant="ghost" isCompact onPress={onOpenDirectory} />}
+        >
+          <RecentHires employees={stats.recent_hires} isCompact={isCompact} onViewEmployee={onViewEmployee} />
+        </Card>
       </>
     );
   }
 
+  const { state } = dashboard;
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <PageHeader
         title={`${getGreeting(new Date().getHours())}, ${user.firstName}`}
         subtitle={`Signed in as ${roleLabels[user.role]}. Here is how the organisation looks today.`}
+        actions={
+          <>
+            <Button label="Directory" icon="people-outline" variant="secondary" onPress={onOpenDirectory} />
+            {canCreate && <Button label="Add employee" icon="person-add-outline" onPress={onAddEmployee} />}
+          </>
+        }
       />
-      {renderStats()}
+      {state.status === 'loading' && <StatusMessage title="Loading dashboard…" isLoading />}
+      {state.status === 'error' && (
+        <StatusMessage
+          title="Dashboard could not be loaded"
+          description={state.error.message}
+          actionLabel="Try again"
+          onAction={dashboard.reload}
+        />
+      )}
+      {state.status === 'success' && renderStats(state.stats)}
     </ScrollView>
   );
 }
@@ -118,9 +150,9 @@ export function Dashboard({ onAddEmployee, onOpenDirectory, onOpenProfile }: Das
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    maxWidth: 1280,
+    maxWidth: 1320,
     alignSelf: 'center',
-    gap: spacing.lg,
+    gap: spacing.lg - spacing.xs,
     padding: spacing.lg,
   },
   statGrid: {
@@ -131,21 +163,21 @@ const styles = StyleSheet.create({
   panels: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.lg,
+    gap: spacing.lg - spacing.xs,
   },
   // flexShrink lets each panel take the full width on phones instead of overflowing.
   widePanel: {
-    flexGrow: 2,
+    flexGrow: 3,
     flexShrink: 1,
-    flexBasis: 420,
+    flexBasis: 440,
   },
   narrowPanel: {
-    flexGrow: 1,
+    flexGrow: 2,
     flexShrink: 1,
-    flexBasis: 260,
+    flexBasis: 300,
   },
-  hint: {
-    color: colors.textMuted,
-    fontSize: typography.fontSize.sm,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
   },
 });
