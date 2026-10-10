@@ -114,7 +114,7 @@ export function EmployeeDirectory({
         title="Employees"
         subtitle="Search, filter and manage everyone in the organisation"
         actions={
-          canCreate ? <Button label="Add employee" icon="person-add-outline" onPress={onCreateEmployee} /> : undefined
+          canCreate ? <Button label="Add employee" onPress={onCreateEmployee} /> : undefined
         }
       />
       <Card

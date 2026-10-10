@@ -5,5 +5,5 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ isActive }: StatusBadgeProps) {
-  return <Badge label={isActive ? 'Active' : 'Inactive'} tone={isActive ? 'green' : 'neutral'} hasDot />;
+  return <Badge label={isActive ? 'Active' : 'Inactive'} tone={isActive ? 'accent' : 'neutral'} />;
 }

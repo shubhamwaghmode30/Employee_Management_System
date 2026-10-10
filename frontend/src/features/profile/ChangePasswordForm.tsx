@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
@@ -20,13 +19,11 @@ export function ChangePasswordForm({ submitPasswordChange }: ChangePasswordFormP
       <Text style={styles.hint}>Use at least 8 characters. You stay signed in after changing it.</Text>
       {form.isSaved && (
         <View role="status" style={[styles.banner, styles.successBanner]}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.success} />
           <Text style={[styles.bannerText, styles.successText]}>Your password has been changed.</Text>
         </View>
       )}
       {form.submitError !== null && (
         <View role="alert" style={[styles.banner, styles.errorBanner]}>
-          <Ionicons name="alert-circle" size={20} color={colors.danger} />
           <Text style={[styles.bannerText, styles.errorText]}>{form.submitError.message}</Text>
         </View>
       )}
@@ -60,7 +57,6 @@ export function ChangePasswordForm({ submitPasswordChange }: ChangePasswordFormP
       <View style={styles.actions}>
         <Button
           label="Update password"
-          icon="key-outline"
           isLoading={form.isSubmitting}
           onPress={() => void form.submit()}
         />
@@ -82,7 +78,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm + spacing.xs,
   },
   successBanner: {
-    backgroundColor: colors.successSubtle,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySubtle,
   },
   errorBanner: {
     backgroundColor: colors.dangerSubtle,
@@ -93,7 +91,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
   },
   successText: {
-    color: colors.success,
+    color: colors.primaryStrongText,
   },
   errorText: {
     color: colors.danger,

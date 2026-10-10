@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type EmployeeActionsProps = {
   employeeName: string;
@@ -24,9 +23,9 @@ export function EmployeeActions({ employeeName, canEdit, canDelete, onEdit, onDe
           accessibilityLabel={`Edit ${employeeName}`}
           hitSlop={spacing.xs}
           onPress={onEdit}
-          style={({ pressed }) => [styles.button, pressed && styles.editPressed]}
+          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
-          <Ionicons name="create-outline" size={18} color={colors.primary} />
+          <Text style={styles.editLabel}>Edit</Text>
         </Pressable>
       )}
       {canDelete && (
@@ -35,16 +34,14 @@ export function EmployeeActions({ employeeName, canEdit, canDelete, onEdit, onDe
           accessibilityLabel={`Delete ${employeeName}`}
           hitSlop={spacing.xs}
           onPress={onDelete}
-          style={({ pressed }) => [styles.button, pressed && styles.deletePressed]}
+          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
-          <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          <Text style={styles.deleteLabel}>Delete</Text>
         </Pressable>
       )}
     </View>
   );
 }
-
-const buttonSize = 34;
 
 const styles = StyleSheet.create({
   actions: {
@@ -52,16 +49,21 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   button: {
-    width: buttonSize,
-    height: buttonSize,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  editPressed: {
-    backgroundColor: colors.primarySubtle,
+  pressed: {
+    backgroundColor: colors.surfaceHover,
   },
-  deletePressed: {
-    backgroundColor: colors.dangerSubtle,
+  editLabel: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  deleteLabel: {
+    color: colors.danger,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

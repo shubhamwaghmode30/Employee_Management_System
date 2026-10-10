@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { hasPermission } from '../../auth/permissions';
@@ -74,7 +73,6 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Pressable accessibilityRole="link" onPress={onBack} style={styles.backLink}>
-        <Ionicons name="arrow-back" size={18} color={colors.primary} />
         <Text style={styles.backLabel}>Back to employees</Text>
       </Pressable>
 
@@ -91,16 +89,15 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
             <StatusBadge isActive={employee.is_active} />
             <EmploymentTypeBadge employmentType={employee.employment_type} />
             <RoleBadge roleId={employee.role_id} />
-            {isSelf && <Badge label="This is you" tone="blue" />}
+            {isSelf && <Badge label="This is you" tone="accent" />}
           </View>
         </View>
         {(canEdit || canDelete) && (
           <View style={styles.actions}>
-            {canEdit && <Button label="Edit" icon="create-outline" onPress={() => onEdit(employee)} />}
+            {canEdit && <Button label="Edit" onPress={() => onEdit(employee)} />}
             {canDelete && (
               <Button
                 label="Delete"
-                icon="trash-outline"
                 variant="dangerOutline"
                 onPress={() => deletion.requestDeletion(employee)}
               />

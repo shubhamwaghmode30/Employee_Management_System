@@ -51,22 +51,16 @@ export function Dashboard({ onAddEmployee, onOpenDirectory, onViewEmployee }: Da
             label="Total employees"
             value={stats.total}
             caption={`${stats.full_time} full time · ${stats.contract} contract`}
-            icon="people-outline"
-            tone={{ accent: colors.primary, background: colors.primarySubtle }}
           />
           <StatCard
             label="Active"
             value={stats.active}
             caption={`${percentOf(stats.active, stats.total)} of the workforce`}
-            icon="checkmark-circle-outline"
-            tone={{ accent: colors.successMark, background: colors.successSubtle }}
           />
           <StatCard
             label="Inactive"
             value={stats.inactive}
             caption="Cannot sign in until reactivated"
-            icon="pause-circle-outline"
-            tone={{ accent: colors.warningMark, background: colors.warningSubtle }}
           />
           <StatCard
             label="Departments"
@@ -74,8 +68,6 @@ export function Dashboard({ onAddEmployee, onOpenDirectory, onViewEmployee }: Da
             caption={
               largestDepartment === undefined ? 'None yet' : `Largest: ${largestDepartment.department}`
             }
-            icon="business-outline"
-            tone={{ accent: colors.accentViolet, background: colors.accentVioletSubtle }}
           />
         </View>
 
@@ -128,8 +120,8 @@ export function Dashboard({ onAddEmployee, onOpenDirectory, onViewEmployee }: Da
         subtitle={`Signed in as ${roleLabels[user.role]}. Here is how the organisation looks today.`}
         actions={
           <>
-            <Button label="Directory" icon="people-outline" variant="secondary" onPress={onOpenDirectory} />
-            {canCreate && <Button label="Add employee" icon="person-add-outline" onPress={onAddEmployee} />}
+            <Button label="Directory" variant="secondary" onPress={onOpenDirectory} />
+            {canCreate && <Button label="Add employee" onPress={onAddEmployee} />}
           </>
         }
       />

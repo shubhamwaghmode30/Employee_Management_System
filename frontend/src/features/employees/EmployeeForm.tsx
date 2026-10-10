@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { hasPermission } from '../../auth/permissions';
@@ -66,7 +65,6 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
 
       {form.submitError !== null && (
         <View role="alert" style={styles.errorBanner}>
-          <Ionicons name="alert-circle" size={20} color={colors.danger} />
           <Text style={styles.errorBannerText}>{form.submitError.message}</Text>
         </View>
       )}
@@ -267,7 +265,6 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
         <Button label="Cancel" variant="secondary" isDisabled={form.isSubmitting} onPress={onCancel} />
         <Button
           label={isCreating ? 'Create employee' : 'Save changes'}
-          icon={isCreating ? 'person-add-outline' : 'checkmark'}
           isLoading={form.isSubmitting}
           onPress={() => void form.submit()}
         />

@@ -29,7 +29,7 @@ export function CompositionBar({ title, segments }: CompositionBarProps) {
                 styles.segment,
                 {
                   flexGrow: segment.count,
-                  backgroundColor: chartSeries[segments.indexOf(segment)] ?? colors.neutralMark,
+                  backgroundColor: chartSeries[segments.indexOf(segment)] ?? colors.borderStrong,
                 },
               ]}
             />
@@ -49,7 +49,7 @@ export function CompositionBar({ title, segments }: CompositionBarProps) {
             >
               <View
                 aria-hidden
-                style={[styles.swatch, { backgroundColor: chartSeries[index] ?? colors.neutralMark }]}
+                style={[styles.swatch, { backgroundColor: chartSeries[index] ?? colors.borderStrong }]}
               />
               <Text style={styles.legendLabel}>{segment.label}</Text>
               <Text style={styles.legendValue}>

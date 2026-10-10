@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -33,7 +32,6 @@ export function NavigationList({ onNavigate }: NavigationListProps) {
             style={({ pressed }) => [styles.item, isActive && styles.itemActive, pressed && styles.itemPressed]}
           >
             <View aria-hidden style={[styles.marker, isActive && styles.markerActive]} />
-            <Ionicons name={item.icon} size={18} color={isActive ? colors.primary : colors.textMuted} />
             <Text style={[styles.label, isActive && styles.labelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -59,7 +57,7 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm + spacing.xs,
+    gap: spacing.sm,
     borderRadius: radius.md,
     paddingRight: spacing.md,
     paddingVertical: spacing.sm + 2,

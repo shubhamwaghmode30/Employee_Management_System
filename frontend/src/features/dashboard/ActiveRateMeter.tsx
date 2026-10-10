@@ -1,14 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../../theme';
+import { chartSeries, colors, radius, spacing, typography } from '../../theme';
 
 type ActiveRateMeterProps = {
   active: number;
   total: number;
 };
 
-/** Share of the workforce that is active; the icon and label carry the status, not colour alone. */
+/** Share of the workforce that is active, with the figure written out beside the meter. */
 export function ActiveRateMeter({ active, total }: ActiveRateMeterProps) {
   const rate = total === 0 ? 0 : Math.round((active / total) * 100);
 
@@ -16,10 +15,7 @@ export function ActiveRateMeter({ active, total }: ActiveRateMeterProps) {
     <View accessible accessibilityLabel={`${rate}% of employees are active`} style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Active workforce</Text>
-        <View style={styles.rate}>
-          <Ionicons name="checkmark-circle" size={16} color={colors.successMark} />
-          <Text style={styles.rateText}>{rate}% active</Text>
-        </View>
+        <Text style={styles.rate}>{rate}% active</Text>
       </View>
       <View aria-hidden style={styles.track}>
         <View style={[styles.fill, { width: `${rate}%` }]} />
@@ -48,24 +44,20 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   rate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  rateText: {
-    color: colors.success,
+    color: colors.textPrimary,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },
+  // A lighter step of the same hue as the fill, so the whole bar reads as one meter.
   track: {
     height: meterHeight,
     borderRadius: radius.sm,
-    backgroundColor: colors.successSubtle,
+    backgroundColor: colors.primarySubtle,
     overflow: 'hidden',
   },
   fill: {
     height: meterHeight,
-    backgroundColor: colors.successMark,
+    backgroundColor: chartSeries[0],
   },
   caption: {
     color: colors.textMuted,

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SegmentedControl } from '../../components/SegmentedControl';
@@ -35,7 +34,6 @@ export function EmployeeFilters({
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View style={styles.searchBox}>
-          <Ionicons name="search" size={16} color={colors.textMuted} />
           <TextInput
             accessibilityLabel="Search employees"
             placeholder="Search by name, email or employee code"

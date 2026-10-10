@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
@@ -13,37 +12,32 @@ type LoginScreenProps = {
 };
 
 const highlights = [
-  { icon: 'people-outline', text: 'One directory for every employee and contractor' },
-  { icon: 'shield-checkmark-outline', text: 'Role-based access for admins, HR and staff' },
-  { icon: 'stats-chart-outline', text: 'Live headcount by department and status' },
+  'One directory for every employee and contractor',
+  'Role-based access for admins, HR and staff',
+  'Live headcount by department and status',
 ] as const;
 
 export function LoginScreen({ signIn, notice }: LoginScreenProps) {
   const form = useLoginForm(signIn);
-  const breakpoint = useBreakpoint();
-  const isWide = breakpoint === 'desktop';
+  const isWide = useBreakpoint() === 'desktop';
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.layout}>
         {isWide && (
           <View style={styles.brandPanel}>
             <View style={styles.brandHeader}>
               <View aria-hidden style={styles.logo}>
-                <Ionicons name="briefcase" size={22} color={colors.onPrimary} />
+                <Text style={styles.logoText}>EMS</Text>
               </View>
               <Text style={styles.brandName}>Employee Management System</Text>
             </View>
             <View style={styles.pitch}>
               <Text style={styles.pitchTitle}>Your people, organised.</Text>
               {highlights.map((highlight) => (
-                <View key={highlight.text} style={styles.highlight}>
-                  <Ionicons name={highlight.icon} size={20} color={colors.brandPanelText} />
-                  <Text style={styles.highlightText}>{highlight.text}</Text>
-                </View>
+                <Text key={highlight} style={styles.highlight}>
+                  {highlight}
+                </Text>
               ))}
             </View>
           </View>
@@ -51,11 +45,7 @@ export function LoginScreen({ signIn, notice }: LoginScreenProps) {
         <ScrollView contentContainerStyle={styles.formArea} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              {!isWide && (
-                <View aria-hidden style={styles.logo}>
-                  <Ionicons name="briefcase" size={22} color={colors.onPrimary} />
-                </View>
-              )}
+              {!isWide && <Text style={styles.compactBrand}>Employee Management System</Text>}
               <Text accessibilityRole="header" style={styles.title}>
                 Sign in
               </Text>
@@ -64,13 +54,11 @@ export function LoginScreen({ signIn, notice }: LoginScreenProps) {
 
             {notice !== null && (
               <View role="status" style={[styles.banner, styles.noticeBanner]}>
-                <Ionicons name="time-outline" size={20} color={colors.warning} />
                 <Text style={[styles.bannerText, styles.noticeText]}>{notice}</Text>
               </View>
             )}
             {form.submitError !== null && (
               <View role="alert" style={[styles.banner, styles.errorBanner]}>
-                <Ionicons name="alert-circle" size={20} color={colors.danger} />
                 <Text style={[styles.bannerText, styles.errorText]}>{form.submitError}</Text>
               </View>
             )}
@@ -95,12 +83,7 @@ export function LoginScreen({ signIn, notice }: LoginScreenProps) {
               autoComplete="current-password"
               onSubmitEditing={() => void form.submit()}
             />
-            <Button
-              label="Sign in"
-              icon="log-in-outline"
-              isLoading={form.isSubmitting}
-              onPress={() => void form.submit()}
-            />
+            <Button label="Sign in" isLoading={form.isSubmitting} onPress={() => void form.submit()} />
           </View>
         </ScrollView>
       </View>
@@ -122,44 +105,49 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     justifyContent: 'space-between',
     padding: spacing.xxl,
-    backgroundColor: colors.brandPanel,
+    backgroundColor: colors.primarySubtle,
+    borderRightWidth: 1,
+    borderRightColor: colors.primaryBorder,
   },
   brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm + spacing.xs,
   },
-  brandName: {
+  logo: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+  },
+  logoText: {
     color: colors.onPrimary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  brandName: {
+    color: colors.primaryStrongText,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
   },
   pitch: {
-    gap: spacing.lg,
+    gap: spacing.md,
     paddingBottom: spacing.xxl,
   },
   pitchTitle: {
-    color: colors.onPrimary,
+    color: colors.primaryStrongText,
     fontSize: typography.fontSize.xxl,
     fontWeight: typography.fontWeight.bold,
   },
   highlight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + spacing.xs,
-  },
-  highlightText: {
-    flex: 1,
-    color: colors.brandPanelText,
+    paddingLeft: spacing.sm + spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    color: colors.textSecondary,
     fontSize: typography.fontSize.md,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
   },
   formArea: {
     flexGrow: 1,
@@ -173,13 +161,20 @@ const styles = StyleSheet.create({
     gap: spacing.md + spacing.xs,
     padding: spacing.xl,
     borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
+    borderTopWidth: 3,
+    borderTopColor: colors.primary,
     backgroundColor: colors.surface,
     boxShadow: elevation.raised,
   },
   cardHeader: {
     gap: spacing.sm,
+  },
+  compactBrand: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
   },
   title: {
     color: colors.textPrimary,
@@ -191,25 +186,24 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     borderRadius: radius.md,
+    borderWidth: 1,
     padding: spacing.sm + spacing.xs,
   },
   noticeBanner: {
-    backgroundColor: colors.warningSubtle,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySubtle,
   },
   errorBanner: {
+    borderColor: colors.danger,
     backgroundColor: colors.dangerSubtle,
   },
   bannerText: {
-    flex: 1,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
   },
   noticeText: {
-    color: colors.warning,
+    color: colors.primaryStrongText,
   },
   errorText: {
     color: colors.danger,

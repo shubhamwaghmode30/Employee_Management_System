@@ -42,7 +42,7 @@ export function HeaderBar({ user, isCompact, onOpenNavigation }: HeaderBarProps)
           const isCurrent = index === trail.length - 1;
           return (
             <View key={label} style={styles.crumb}>
-              {index > 0 && <Ionicons name="chevron-forward" size={14} color={colors.placeholder} />}
+              {index > 0 && <Text style={styles.separator}>/</Text>}
               <Text style={[styles.crumbText, isCurrent && styles.crumbCurrent]} numberOfLines={1}>
                 {label}
               </Text>
@@ -52,7 +52,6 @@ export function HeaderBar({ user, isCompact, onOpenNavigation }: HeaderBarProps)
       </View>
       {!isCompact && (
         <View style={styles.date}>
-          <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
           <Text style={styles.dateText}>{getTodayLabel(new Date())}</Text>
         </View>
       )}
@@ -108,6 +107,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  separator: {
+    color: colors.placeholder,
+    fontSize: typography.fontSize.sm,
   },
   crumbText: {
     flexShrink: 1,

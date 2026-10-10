@@ -32,7 +32,6 @@ export function PaginationControls({
         <Button
           label="Previous"
           accessibilityLabel="Previous page"
-          icon="chevron-back"
           variant="secondary"
           isCompact
           isDisabled={page <= 1}

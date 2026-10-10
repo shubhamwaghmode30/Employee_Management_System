@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../theme';
@@ -7,7 +6,7 @@ export function BrandMark() {
   return (
     <View style={styles.brand}>
       <View aria-hidden style={styles.logo}>
-        <Ionicons name="briefcase" size={18} color={colors.onPrimary} />
+        <Text style={styles.logoText}>EMS</Text>
       </View>
       <View style={styles.text}>
         <Text accessibilityRole="header" style={styles.title} numberOfLines={2}>
@@ -39,6 +38,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
+  },
+  logoText: {
+    color: colors.onPrimary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.5,
   },
   text: {
     flex: 1,

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, elevation, radius, spacing, typography } from '../../theme';
@@ -7,30 +6,18 @@ type StatCardProps = {
   label: string;
   value: number;
   caption: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  tone: { accent: string; background: string };
 };
 
-/** KPI tile: label, headline value and a one-line caption, keyed by an accent bar. */
-export function StatCard({ label, value, caption, icon, tone }: StatCardProps) {
+/** KPI tile: label, headline value and a one-line caption. */
+export function StatCard({ label, value, caption }: StatCardProps) {
   return (
     <View accessible accessibilityLabel={`${label}: ${value}. ${caption}`} style={styles.card}>
-      <View aria-hidden style={[styles.accent, { backgroundColor: tone.accent }]} />
-      <View style={styles.body}>
-        <View style={styles.header}>
-          <Text style={styles.label}>{label}</Text>
-          <View style={[styles.icon, { backgroundColor: tone.background }]}>
-            <Ionicons name={icon} size={18} color={tone.accent} />
-          </View>
-        </View>
-        <Text style={styles.value}>{value.toLocaleString('en-US')}</Text>
-        <Text style={styles.caption}>{caption}</Text>
-      </View>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.value}>{value.toLocaleString('en-US')}</Text>
+      <Text style={styles.caption}>{caption}</Text>
     </View>
   );
 }
-
-const iconSize = 32;
 
 const styles = StyleSheet.create({
   card: {
@@ -38,40 +25,22 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     // Two tiles per row on phones, four on wide screens.
     flexBasis: 160,
-    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    borderTopWidth: 3,
+    borderTopColor: colors.primary,
     backgroundColor: colors.surface,
     boxShadow: elevation.card,
-    overflow: 'hidden',
-  },
-  accent: {
-    width: 4,
-  },
-  body: {
-    flex: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
   },
   label: {
-    flexShrink: 1,
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-  },
-  icon: {
-    width: iconSize,
-    height: iconSize,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   value: {
     color: colors.textPrimary,
@@ -79,7 +48,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
   },
   caption: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: typography.fontSize.xs,
   },
 });

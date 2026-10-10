@@ -7,10 +7,5 @@ type EmploymentTypeBadgeProps = {
 };
 
 export function EmploymentTypeBadge({ employmentType }: EmploymentTypeBadgeProps) {
-  return (
-    <Badge
-      label={employmentTypeLabels[employmentType]}
-      tone={employmentType === 'FULL_TIME' ? 'blue' : 'orange'}
-    />
-  );
+  return <Badge label={employmentTypeLabels[employmentType]} tone="neutral" />;
 }

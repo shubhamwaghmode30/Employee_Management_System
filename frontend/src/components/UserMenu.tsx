@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { roleLabels } from '../auth/roles';
@@ -34,7 +33,6 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
         onPress={onLogout}
         style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
       >
-        <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.logoutText}>Log out</Text>
       </Pressable>
     </View>
@@ -65,7 +63,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   role: {
-    color: colors.primary,
+    color: colors.textSecondary,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
   },

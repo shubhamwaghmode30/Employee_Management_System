@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../theme';
@@ -9,7 +8,6 @@ type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
-  icon?: keyof typeof Ionicons.glyphMap;
   isLoading?: boolean;
   isDisabled?: boolean;
   isCompact?: boolean;
@@ -28,7 +26,6 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
-  icon,
   isLoading = false,
   isDisabled = false,
   isCompact = false,
@@ -55,10 +52,7 @@ export function Button({
       {isLoading ? (
         <ActivityIndicator color={labelColor} />
       ) : (
-        <>
-          {icon !== undefined && <Ionicons name={icon} size={isCompact ? 14 : 16} color={labelColor} />}
-          <Text style={[styles.label, isCompact && styles.compactLabel, { color: labelColor }]}>{label}</Text>
-        </>
+        <Text style={[styles.label, isCompact && styles.compactLabel, { color: labelColor }]}>{label}</Text>
       )}
     </Pressable>
   );
