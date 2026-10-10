@@ -47,10 +47,15 @@ SessionLocal = sessionmaker(bind=engine)
 def get_db() -> Generator[Session, None, None]:
     """Dependency-injectable database session.
 
-    Yields a session and ensures it is closed after use.
+    Commits once the request handler succeeds and rolls back if it raises, so
+    repositories only flush and each request is a single transaction.
     """
     db = SessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
