@@ -16,7 +16,14 @@ from app.models.employee import ContractEmployee, Employee, FullTimeEmployee
 from app.models.role import Role
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
-from app.schemas.employee import EmployeeCreate, EmployeeUpdate
+from app.schemas.employee import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.schemas.employee_stats import (
+    DepartmentHeadcount,
+    EmployeeStats,
+    RoleHeadcount,
+)
+
+RECENT_HIRES_LIMIT = 5
 
 
 class EmployeeService:
@@ -205,6 +212,39 @@ class EmployeeService:
     def list_departments(self) -> list[str]:
         """Return the departments currently in use."""
         return self.employee_repo.list_departments()
+
+    def get_stats(self) -> EmployeeStats:
+        """Summarise headcount for the dashboard. Soft-deleted rows are excluded."""
+        by_status = self.employee_repo.count_by_status()
+        by_type = self.employee_repo.count_by_employment_type()
+        role_names = {role.id: role.name for role in self.role_repo.list()}
+        by_role = [
+            RoleHeadcount(role=role_names[role_id], count=count)
+            for role_id, count in self.employee_repo.count_by_role_id()
+            if role_id in role_names
+        ]
+        by_role.sort(key=lambda entry: list(RoleName).index(entry.role))
+        active = by_status.get(True, 0)
+        inactive = by_status.get(False, 0)
+
+        return EmployeeStats(
+            total=active + inactive,
+            active=active,
+            inactive=inactive,
+            full_time=by_type.get(EmploymentType.FULL_TIME, 0),
+            contract=by_type.get(EmploymentType.CONTRACT, 0),
+            by_department=[
+                DepartmentHeadcount(department=department, count=count)
+                for department, count in self.employee_repo.count_by_department()
+            ],
+            by_role=by_role,
+            recent_hires=[
+                EmployeeRead.model_validate(employee)
+                for employee in self.employee_repo.list_recent_hires(
+                    RECENT_HIRES_LIMIT
+                )
+            ],
+        )
 
     def _get_assignable_role(self, role_id: int, actor: Employee) -> Role:
         """Load a role and check that the actor may grant it."""

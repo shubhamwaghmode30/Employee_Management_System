@@ -484,3 +484,44 @@ class TestSearchAndDepartments:
             "Engineering",
             "Human Resources",
         ]
+
+    def test_summarises_headcount_for_the_dashboard(
+        self,
+        service: EmployeeService,
+        roles: dict[RoleName, Role],
+        admin: Employee,
+        hr_manager: Employee,
+    ) -> None:
+        engineer = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        service.create_employee(contract_payload(roles[RoleName.EMPLOYEE]), admin)
+        service.update_employee(
+            str(engineer.id), EmployeeUpdate(is_active=False), admin
+        )
+        departed = service.create_employee(
+            full_time_payload(
+                roles[RoleName.EMPLOYEE], "kavya.iyer@company.com", "ENG002"
+            ),
+            admin,
+        )
+        service.delete_employee(str(departed.id), admin)
+
+        stats = service.get_stats()
+
+        assert (stats.total, stats.active, stats.inactive) == (4, 3, 1)
+        assert (stats.full_time, stats.contract) == (3, 1)
+        assert [(entry.department, entry.count) for entry in stats.by_department] == [
+            ("Human Resources", 2),
+            ("Design", 1),
+            ("Engineering", 1),
+        ]
+        assert [(entry.role, entry.count) for entry in stats.by_role] == [
+            (RoleName.ADMIN, 1),
+            (RoleName.HR_MANAGER, 1),
+            (RoleName.EMPLOYEE, 2),
+        ]
+        assert [employee.email for employee in stats.recent_hires][:2] == [
+            "rahul.verma@company.com",
+            "arjun.mehta@company.com",
+        ]

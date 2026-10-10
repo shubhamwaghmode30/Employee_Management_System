@@ -19,6 +19,7 @@ from app.schemas.employee import (
     EmployeeUpdate,
     PaginatedEmployees,
 )
+from app.schemas.employee_stats import EmployeeStats
 from app.services.employee import EmployeeService
 
 employee_router = APIRouter(prefix="/employees", tags=["employees"])
@@ -73,6 +74,18 @@ def list_departments(
 ) -> list[str]:
     """List the departments in use, for filter and form choices."""
     return employee_service.list_departments()
+
+
+@employee_router.get(
+    "/stats",
+    response_model=EmployeeStats,
+    dependencies=[Depends(require_permission(Permission.EMPLOYEE_READ))],
+)
+def get_employee_stats(
+    employee_service: EmployeeService = Depends(get_employee_service),
+) -> EmployeeStats:
+    """Headcount summary for the dashboard."""
+    return employee_service.get_stats()
 
 
 @employee_router.post(

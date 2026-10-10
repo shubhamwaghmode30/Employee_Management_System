@@ -52,6 +52,61 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         )
         return list(self.session.scalars(stmt))
 
+    def count_by_department(self) -> list[tuple[str, int]]:
+        """Count non-deleted employees per department, largest first."""
+        headcount = func.count(Employee.id)
+        stmt = (
+            select(Employee.department, headcount)
+            .where(Employee.deleted_at.is_(None))
+            .group_by(Employee.department)
+            .order_by(headcount.desc(), Employee.department)
+        )
+        return [
+            (department, int(count))
+            for department, count in self.session.execute(stmt)
+        ]
+
+    def count_by_status(self) -> dict[bool, int]:
+        """Count non-deleted employees per is_active value."""
+        stmt = (
+            select(Employee.is_active, func.count(Employee.id))
+            .where(Employee.deleted_at.is_(None))
+            .group_by(Employee.is_active)
+        )
+        return {
+            is_active: int(count) for is_active, count in self.session.execute(stmt)
+        }
+
+    def count_by_employment_type(self) -> dict[str, int]:
+        """Count non-deleted employees per employment type."""
+        stmt = (
+            select(Employee.employment_type, func.count(Employee.id))
+            .where(Employee.deleted_at.is_(None))
+            .group_by(Employee.employment_type)
+        )
+        return {
+            str(employment_type): int(count)
+            for employment_type, count in self.session.execute(stmt)
+        }
+
+    def count_by_role_id(self) -> list[tuple[int, int]]:
+        """Count non-deleted employees per role id."""
+        stmt = (
+            select(Employee.role_id, func.count(Employee.id))
+            .where(Employee.deleted_at.is_(None))
+            .group_by(Employee.role_id)
+        )
+        return [(role_id, int(count)) for role_id, count in self.session.execute(stmt)]
+
+    def list_recent_hires(self, limit: int) -> list[Employee]:
+        """Return the most recently hired non-deleted employees."""
+        stmt = (
+            self._base_query()
+            .order_by(Employee.hire_date.desc(), Employee.last_name)
+            .limit(limit)
+        )
+        return list(self.session.scalars(stmt))
+
     def search(
         self,
         department: str | None = None,

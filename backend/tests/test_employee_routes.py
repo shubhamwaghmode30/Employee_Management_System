@@ -191,6 +191,7 @@ class TestAnonymous:
             ("PATCH", f"/api/v1/employees/{MISSING_ID}"),
             ("DELETE", f"/api/v1/employees/{MISSING_ID}"),
             ("GET", "/api/v1/employees/departments"),
+            ("GET", "/api/v1/employees/stats"),
             ("GET", "/api/v1/roles"),
             ("POST", "/api/v1/auth/change-password"),
         ],
@@ -409,6 +410,26 @@ class TestAdmin:
 
         assert response.status_code == 422
         assert_error(response.json(), "INVALID_EMPLOYEE_DATA")
+
+
+class TestEmployeeStats:
+    def test_any_signed_in_role_can_read_stats(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        employee_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        create_employee(client, admin_headers, contract_body(roles))
+
+        response = client.get("/api/v1/employees/stats", headers=employee_headers)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert (body["total"], body["active"], body["contract"]) == (3, 3, 1)
+        assert body["by_department"][0] == {"department": "Human Resources", "count": 2}
+        assert body["recent_hires"][0]["email"] == "rahul.verma@company.com"
+        assert all("password_hash" not in hire for hire in body["recent_hires"])
 
 
 class TestHrManager:
