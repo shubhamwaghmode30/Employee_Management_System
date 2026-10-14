@@ -12,9 +12,7 @@ type LoginScreenProps = {
 };
 
 const highlights = [
-  'One directory for every employee and contractor',
-  'Role-based access for admins, HR and staff',
-  'Live headcount by department and status',
+  
 ] as const;
 
 export function LoginScreen({ signIn, notice }: LoginScreenProps) {
