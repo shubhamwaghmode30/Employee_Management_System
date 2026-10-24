@@ -1,10 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { RoleCatalogProvider } from '../src/auth/role-catalog-context';
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
 import { createMockEmployeeDataSource } from '../src/features/employees/mock-employee-data-source';
 import { ProfilePage } from '../src/features/profile/ProfilePage';
 import { type SubmitPasswordChange, validatePasswordChange } from '../src/features/profile/use-password-change';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 import { buildSessionUser } from '../test-fixtures/session-users';
 
 const priyaId = '05b12d14-6099-4228-9c6b-35294501d132';
@@ -13,9 +15,11 @@ async function renderProfile(submitPasswordChange: SubmitPasswordChange) {
   const onOpenRecord = jest.fn();
   await render(
     <SessionUserProvider user={buildSessionUser('HR_MANAGER', priyaId)}>
-      <EmployeeDataSourceProvider dataSource={createMockEmployeeDataSource()}>
-        <ProfilePage submitPasswordChange={submitPasswordChange} onOpenRecord={onOpenRecord} />
-      </EmployeeDataSourceProvider>
+      <RoleCatalogProvider catalog={testRoleCatalog}>
+        <EmployeeDataSourceProvider dataSource={createMockEmployeeDataSource()}>
+          <ProfilePage submitPasswordChange={submitPasswordChange} onOpenRecord={onOpenRecord} />
+        </EmployeeDataSourceProvider>
+      </RoleCatalogProvider>
     </SessionUserProvider>,
   );
   return { onOpenRecord };

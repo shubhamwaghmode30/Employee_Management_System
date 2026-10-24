@@ -3,6 +3,27 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, elevation, radius, spacing, typography } from '../theme';
 
+type CardHeaderProps = {
+  title: string;
+  subtitle?: string | undefined;
+  action?: ReactNode;
+};
+
+/** The title bar of a card; also used on its own by panels that scroll as a list. */
+export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerText}>
+        <Text accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
+        {subtitle !== undefined && <Text style={styles.subtitle}>{subtitle}</Text>}
+      </View>
+      {action}
+    </View>
+  );
+}
+
 type CardProps = {
   title?: string;
   subtitle?: string;
@@ -15,17 +36,7 @@ type CardProps = {
 export function Card({ title, subtitle, action, isFlush = false, children }: CardProps) {
   return (
     <View style={styles.card}>
-      {title !== undefined && (
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text accessibilityRole="header" style={styles.title}>
-              {title}
-            </Text>
-            {subtitle !== undefined && <Text style={styles.subtitle}>{subtitle}</Text>}
-          </View>
-          {action}
-        </View>
-      )}
+      {title !== undefined && <CardHeader title={title} subtitle={subtitle} action={action} />}
       <View style={isFlush ? undefined : styles.body}>{children}</View>
     </View>
   );

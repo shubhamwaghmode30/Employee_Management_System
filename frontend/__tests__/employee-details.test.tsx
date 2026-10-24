@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { RoleCatalogProvider } from '../src/auth/role-catalog-context';
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
 import { EmployeeDetails } from '../src/features/employees/EmployeeDetails';
 import { createMockEmployeeDataSource } from '../src/features/employees/mock-employee-data-source';
 import mockEmployees from '../src/features/employees/mock-employees.json';
 import type { RoleName } from '../src/types/role-name';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 import { buildSessionUser } from '../test-fixtures/session-users';
 
 const priyaId = mockEmployees[0]?.id ?? '';
@@ -17,9 +19,11 @@ async function renderDetails(employeeId: string, role: RoleName = 'ADMIN', userI
   const handlers = { onBack: jest.fn(), onEdit: jest.fn(), onDeleted: jest.fn() };
   await render(
     <SessionUserProvider user={buildSessionUser(role, userId)}>
-      <EmployeeDataSourceProvider dataSource={{ ...dataSource, deleteEmployee }}>
-        <EmployeeDetails employeeId={employeeId} {...handlers} />
-      </EmployeeDataSourceProvider>
+      <RoleCatalogProvider catalog={testRoleCatalog}>
+        <EmployeeDataSourceProvider dataSource={{ ...dataSource, deleteEmployee }}>
+          <EmployeeDetails employeeId={employeeId} {...handlers} />
+        </EmployeeDataSourceProvider>
+      </RoleCatalogProvider>
     </SessionUserProvider>,
   );
   return { deleteEmployee, ...handlers };

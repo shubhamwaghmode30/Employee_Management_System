@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
-import { getRoleName, roleIdsByName, roleNames } from '../../auth/roles';
+import type { RoleCatalog } from '../../auth/role-catalog';
+import { roleNames } from '../../auth/roles';
 import type { Result } from '../../types/result';
 import type { RoleName } from '../../types/role-name';
-import type { EmployeeCreateInput, EmployeeUpdateInput, EmploymentTerms, PayUpdate } from './employee-inputs';
+import type { EmployeeCreateInput, EmployeeUpdateInput, EmploymentTerms } from './employee-inputs';
 import type { Employee, EmploymentType } from './employee-schemas';
 
 /** Everything the create and edit forms hold, as the user typed it. */
@@ -47,7 +48,7 @@ export const emptyEmployeeFormValues: EmployeeFormValues = {
   isActive: true,
 };
 
-export function formValuesFromEmployee(employee: Employee): EmployeeFormValues {
+export function formValuesFromEmployee(employee: Employee, roleCatalog: RoleCatalog): EmployeeFormValues {
   return {
     ...emptyEmployeeFormValues,
     employeeCode: employee.employee_code,
@@ -59,7 +60,7 @@ export function formValuesFromEmployee(employee: Employee): EmployeeFormValues {
     jobTitle: employee.job_title,
     hireDate: employee.hire_date.slice(0, 10),
     // Least privilege if the backend ever returns a role this app does not know.
-    role: getRoleName(employee.role_id) ?? 'EMPLOYEE',
+    role: roleCatalog.getRoleName(employee.role_id) ?? 'EMPLOYEE',
     employmentType: employee.employment_type,
     annualSalary: employee.employment_type === 'FULL_TIME' ? (employee.annual_salary ?? '') : '',
     hourlyRate: employee.employment_type === 'CONTRACT' ? (employee.hourly_rate ?? '') : '',
@@ -67,6 +68,31 @@ export function formValuesFromEmployee(employee: Employee): EmployeeFormValues {
       employee.employment_type === 'CONTRACT' ? (employee.contract_end_date?.slice(0, 10) ?? '') : '',
     isActive: employee.is_active,
   };
+}
+
+/**
+ * Column sizes from backend app/models/employee.py. Inputs stop at these
+ * lengths, so a request the database would reject is never sent.
+ */
+export const fieldMaxLengths = {
+  employeeCode: 20,
+  password: 128,
+  firstName: 100,
+  lastName: 100,
+  email: 255,
+  phone: 20,
+  department: 100,
+  jobTitle: 100,
+  money: 11,
+  date: 10,
+} as const;
+
+/** Hires are planned ahead, but a hire date years away is almost always a typo. */
+const maxDaysAheadForHireDate = 366;
+
+function isWithinHiringWindow(text: string, today: Date): boolean {
+  const latest = new Date(today.getTime() + maxDaysAheadForHireDate * 24 * 60 * 60 * 1000);
+  return text >= '1950-01-01' && text <= latest.toISOString().slice(0, 10);
 }
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -105,16 +131,19 @@ function money(label: string) {
 
 const detailsSchema = z
   .object({
-    firstName: requiredText('First name', 100),
-    lastName: requiredText('Last name', 100),
-    email: requiredText('Email', 255).pipe(z.email('Enter a valid email address')),
+    firstName: requiredText('First name', fieldMaxLengths.firstName),
+    lastName: requiredText('Last name', fieldMaxLengths.lastName),
+    // Lower-cased so the payload matches how the backend compares addresses.
+    email: requiredText('Email', fieldMaxLengths.email)
+      .pipe(z.email('Enter a valid email address'))
+      .transform((email) => email.toLowerCase()),
     phone: z
       .string()
       .trim()
-      .max(20, 'Phone must be at most 20 characters')
+      .max(fieldMaxLengths.phone, `Phone must be at most ${fieldMaxLengths.phone} characters`)
       .regex(/^[+\d\s()-]*$/, 'Phone can only contain digits, spaces, +, ( ) and -'),
-    department: requiredText('Department', 100),
-    jobTitle: requiredText('Job title', 100),
+    department: requiredText('Department', fieldMaxLengths.department),
+    jobTitle: requiredText('Job title', fieldMaxLengths.jobTitle),
     hireDate: optionalDate('Hire date').refine((text) => text !== '', { message: 'Hire date is required' }),
     role: z.enum(roleNames),
     employmentType: z.enum(['FULL_TIME', 'CONTRACT']),
@@ -137,25 +166,51 @@ const detailsSchema = z
     { message: 'Contract end date cannot be before the hire date', path: ['contractEndDate'] },
   );
 
+// Only checked when creating: the hire date of an existing record cannot be edited.
+const hiringWindowSchema = z.object({
+  hireDate: z
+    .string()
+    .trim()
+    .refine((text) => !datePattern.test(text) || !isCalendarDate(text) || isWithinHiringWindow(text, new Date()), {
+      message: 'Hire date must be between 1950 and one year from today',
+    }),
+});
+
 const accountSchema = z.object({
-  employeeCode: requiredText('Employee code', 20).regex(
+  employeeCode: requiredText('Employee code', fieldMaxLengths.employeeCode).regex(
     /^[A-Za-z0-9-]+$/,
     'Employee code can only contain letters, digits and -',
   ),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters'),
+    .max(fieldMaxLengths.password, `Password must be at most ${fieldMaxLengths.password} characters`)
+    .refine((password) => password.trim() === password, {
+      message: 'Password cannot start or end with a space',
+    }),
 });
 
 type ParsedDetails = z.infer<typeof detailsSchema>;
 
-export function validateCreateForm(values: EmployeeFormValues): Result<EmployeeCreateInput, FieldErrors> {
+export function validateCreateForm(
+  values: EmployeeFormValues,
+  roleCatalog: RoleCatalog,
+): Result<EmployeeCreateInput, FieldErrors> {
   const relevantValues = clearHiddenPayFields(values);
   const details = detailsSchema.safeParse(relevantValues);
   const account = accountSchema.safeParse(relevantValues);
-  if (!details.success || !account.success) {
-    return { ok: false, error: { ...toFieldErrors(details.error), ...toFieldErrors(account.error) } };
+  const hiringWindow = hiringWindowSchema.safeParse(relevantValues);
+  const roleId = roleCatalog.getRoleId(values.role);
+  if (!details.success || !account.success || !hiringWindow.success || roleId === null) {
+    return {
+      ok: false,
+      error: {
+        ...roleError(roleId),
+        ...toFieldErrors(hiringWindow.error),
+        ...toFieldErrors(details.error),
+        ...toFieldErrors(account.error),
+      },
+    };
   }
   return {
     ok: true,
@@ -163,25 +218,64 @@ export function validateCreateForm(values: EmployeeFormValues): Result<EmployeeC
       employee_code: account.data.employeeCode,
       password: account.data.password,
       hire_date: `${details.data.hireDate}T00:00:00Z`,
-      ...toDetailsInput(details.data),
+      ...toDetailsInput(details.data, roleId),
       ...toTermsInput(details.data),
     },
   };
 }
 
-export function validateUpdateForm(values: EmployeeFormValues): Result<EmployeeUpdateInput, FieldErrors> {
+/**
+ * Validates the whole form, then returns only the fields that differ from the
+ * stored employee, so a PATCH never resends values that did not change.
+ */
+export function validateUpdateForm(
+  values: EmployeeFormValues,
+  roleCatalog: RoleCatalog,
+  original: Employee,
+): Result<EmployeeUpdateInput, FieldErrors> {
   const details = detailsSchema.safeParse(clearHiddenPayFields(values));
-  if (!details.success) {
-    return { ok: false, error: toFieldErrors(details.error) };
+  const roleId = roleCatalog.getRoleId(values.role);
+  if (!details.success || roleId === null) {
+    return { ok: false, error: { ...roleError(roleId), ...toFieldErrors(details.error) } };
   }
-  return {
-    ok: true,
-    value: {
-      ...toDetailsInput(details.data),
-      is_active: details.data.isActive,
-      ...toPayUpdate(details.data),
-    },
+  return { ok: true, value: changedFields(details.data, roleId, original) };
+}
+
+function changedFields(details: ParsedDetails, roleId: number, original: Employee): EmployeeUpdateInput {
+  const next = toDetailsInput(details, roleId);
+  const changes: EmployeeUpdateInput = {
+    ...(next.first_name !== original.first_name && { first_name: next.first_name }),
+    ...(next.last_name !== original.last_name && { last_name: next.last_name }),
+    ...(next.email !== original.email.toLowerCase() && { email: next.email }),
+    ...(next.phone !== original.phone && { phone: next.phone }),
+    ...(next.department !== original.department && { department: next.department }),
+    ...(next.job_title !== original.job_title && { job_title: next.job_title }),
+    ...(next.role_id !== original.role_id && { role_id: next.role_id }),
+    ...(details.isActive !== original.is_active && { is_active: details.isActive }),
   };
+  if (original.employment_type === 'FULL_TIME') {
+    return {
+      ...changes,
+      ...(!isSameAmount(details.annualSalary, original.annual_salary) && { annual_salary: details.annualSalary }),
+    };
+  }
+  const contractEndDate = toContractEndDate(details);
+  return {
+    ...changes,
+    ...(!isSameAmount(details.hourlyRate, original.hourly_rate) && { hourly_rate: details.hourlyRate }),
+    ...(contractEndDate?.slice(0, 10) !== original.contract_end_date?.slice(0, 10) && {
+      contract_end_date: contractEndDate,
+    }),
+  };
+}
+
+/** "95000" and "95000.00" are the same salary, so neither counts as a change. */
+function isSameAmount(typed: string, stored: string | null): boolean {
+  return stored !== null && Number(typed) === Number(stored);
+}
+
+export function hasChanges(input: EmployeeUpdateInput): boolean {
+  return Object.keys(input).length > 0;
 }
 
 /** Pay fields of the other employment type are hidden, so they must not block saving. */
@@ -191,7 +285,12 @@ function clearHiddenPayFields(values: EmployeeFormValues): EmployeeFormValues {
     : { ...values, annualSalary: '' };
 }
 
-function toDetailsInput(details: ParsedDetails) {
+/** A role the database does not hold cannot be sent, even if the form offers it. */
+function roleError(roleId: number | null): FieldErrors {
+  return roleId === null ? { role: 'This role is not available' } : {};
+}
+
+function toDetailsInput(details: ParsedDetails, roleId: number) {
   return {
     first_name: details.firstName,
     last_name: details.lastName,
@@ -199,7 +298,7 @@ function toDetailsInput(details: ParsedDetails) {
     phone: details.phone === '' ? null : details.phone,
     department: details.department,
     job_title: details.jobTitle,
-    role_id: roleIdsByName[details.role],
+    role_id: roleId,
   };
 }
 
@@ -216,13 +315,6 @@ function toTermsInput(details: ParsedDetails): EmploymentTerms {
     hourly_rate: details.hourlyRate,
     contract_end_date: toContractEndDate(details),
   };
-}
-
-function toPayUpdate(details: ParsedDetails): PayUpdate {
-  if (details.employmentType === 'FULL_TIME') {
-    return { annual_salary: details.annualSalary };
-  }
-  return { hourly_rate: details.hourlyRate, contract_end_date: toContractEndDate(details) };
 }
 
 function isFormField(key: PropertyKey): key is EmployeeFormField {

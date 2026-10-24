@@ -20,7 +20,14 @@ export const currentUserSchema = z.object({
   last_name: z.string(),
   role: z.enum(['ADMIN', 'HR_MANAGER', 'EMPLOYEE']),
   permissions: z.array(
-    z.enum(['EMPLOYEE_READ', 'EMPLOYEE_CREATE', 'EMPLOYEE_UPDATE', 'EMPLOYEE_DELETE', 'ROLE_ASSIGN']),
+    z.enum([
+      'EMPLOYEE_READ',
+      'EMPLOYEE_CREATE',
+      'EMPLOYEE_UPDATE',
+      'EMPLOYEE_DELETE',
+      'EMPLOYEE_RESTORE',
+      'ROLE_ASSIGN',
+    ]),
   ),
 });
 

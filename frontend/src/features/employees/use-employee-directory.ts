@@ -19,10 +19,15 @@ type SettledRequest = {
 };
 
 const searchDebounceMs = 300;
-const defaultPageSize = 10;
+
+/** Page sizes offered to the user; the API caps page_size at 100, so nothing larger is ever requested. */
+export const pageSizeOptions = [10, 25, 50, 100] as const;
+
+export type PageSize = (typeof pageSizeOptions)[number];
 
 /** Controller for the employee directory: filters, paging and request state. */
-export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = defaultPageSize) {
+export function useEmployeeDirectory(dataSource: EmployeeDataSource, initialPageSize: PageSize = 10) {
+  const [pageSize, setPageSize] = useState<PageSize>(initialPageSize);
   const [searchText, setSearchText] = useState('');
   const [department, setDepartment] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -85,6 +90,10 @@ export function useEmployeeDirectory(dataSource: EmployeeDataSource, pageSize = 
     },
     changeStatusFilter(nextStatusFilter: StatusFilter) {
       setStatusFilter(nextStatusFilter);
+      setPage(1);
+    },
+    changePageSize(nextPageSize: PageSize) {
+      setPageSize(nextPageSize);
       setPage(1);
     },
     goToPreviousPage() {

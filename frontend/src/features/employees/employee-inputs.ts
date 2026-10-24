@@ -30,15 +30,16 @@ export type EmployeeCreateInput = EmployeeDetailsInput & {
   hire_date: string;
 } & EmploymentTerms;
 
-/** Pay fields an update may change; the employment type itself is fixed after creation. */
-export type PayUpdate =
-  | { annual_salary: string }
-  | { hourly_rate: string; contract_end_date: string | null };
-
 /**
- * PATCH body. Employee code, hire date and employment type are fixed after
- * creation, and passwords change only through POST /auth/change-password.
+ * PATCH body: only the fields the user changed. Employee code, hire date and
+ * employment type are fixed after creation, and passwords change only through
+ * POST /auth/change-password.
  */
-export type EmployeeUpdateInput = EmployeeDetailsInput & {
-  is_active: boolean;
-} & PayUpdate;
+export type EmployeeUpdateInput = Partial<
+  EmployeeDetailsInput & {
+    is_active: boolean;
+    annual_salary: string;
+    hourly_rate: string;
+    contract_end_date: string | null;
+  }
+>;

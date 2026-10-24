@@ -25,6 +25,7 @@ const permissionLabels: Record<Permission, string> = {
   EMPLOYEE_CREATE: 'Add employees',
   EMPLOYEE_UPDATE: 'Edit employees',
   EMPLOYEE_DELETE: 'Delete employees',
+  EMPLOYEE_RESTORE: 'Restore deleted employees',
   ROLE_ASSIGN: 'Assign the admin role',
 };
 
@@ -33,6 +34,7 @@ const permissionOrder: readonly Permission[] = [
   'EMPLOYEE_CREATE',
   'EMPLOYEE_UPDATE',
   'EMPLOYEE_DELETE',
+  'EMPLOYEE_RESTORE',
   'ROLE_ASSIGN',
 ];
 

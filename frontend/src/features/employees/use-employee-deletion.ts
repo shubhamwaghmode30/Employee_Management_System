@@ -1,26 +1,29 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { ApiError } from '../../api/api-error';
 import type { EmployeeDataSource } from './employee-data-source';
-import type { Employee } from './employee-schemas';
+import type { EmployeeSummary } from './employee-schemas';
 
 /** Controller for confirming and running an employee soft delete. */
 export function useEmployeeDeletion(
   dataSource: EmployeeDataSource,
-  onDeleted: (employee: Employee) => void,
+  onDeleted: (employee: EmployeeSummary) => void,
 ) {
-  const [pendingEmployee, setPendingEmployee] = useState<Employee | null>(null);
+  const [pendingEmployee, setPendingEmployee] = useState<EmployeeSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
+
+  // Stable, so memoised list rows that receive it do not re-render on every change.
+  const requestDeletion = useCallback((employee: EmployeeSummary) => {
+    setError(null);
+    setPendingEmployee(employee);
+  }, []);
 
   return {
     pendingEmployee,
     isDeleting,
     error,
-    requestDeletion(employee: Employee) {
-      setError(null);
-      setPendingEmployee(employee);
-    },
+    requestDeletion,
     cancelDeletion() {
       setPendingEmployee(null);
       setError(null);

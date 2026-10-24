@@ -4,4 +4,5 @@ export type Permission =
   | 'EMPLOYEE_CREATE'
   | 'EMPLOYEE_UPDATE'
   | 'EMPLOYEE_DELETE'
+  | 'EMPLOYEE_RESTORE'
   | 'ROLE_ASSIGN';

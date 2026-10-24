@@ -1,3 +1,4 @@
+import { createRoleCatalog } from '../src/auth/role-catalog';
 import {
   type EmployeeFormValues,
   emptyEmployeeFormValues,
@@ -7,6 +8,7 @@ import {
 } from '../src/features/employees/employee-form-values';
 import { employeeSchema } from '../src/features/employees/employee-schemas';
 import mockEmployees from '../src/features/employees/mock-employees.json';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 
 const validFullTime: EmployeeFormValues = {
   ...emptyEmployeeFormValues,
@@ -34,7 +36,7 @@ const validContract: EmployeeFormValues = {
 
 describe('validateCreateForm', () => {
   it('turns a valid full-time form into a create request', () => {
-    expect(validateCreateForm(validFullTime)).toEqual({
+    expect(validateCreateForm(validFullTime, testRoleCatalog)).toEqual({
       ok: true,
       value: {
         employee_code: 'FT0025',
@@ -54,7 +56,10 @@ describe('validateCreateForm', () => {
   });
 
   it('sends only contract pay fields for a contract employee', () => {
-    const result = validateCreateForm({ ...validContract, annualSalary: 'left over from full time' });
+    const result = validateCreateForm(
+      { ...validContract, annualSalary: 'left over from full time' },
+      testRoleCatalog,
+    );
 
     expect(result).toMatchObject({
       ok: true,
@@ -68,7 +73,7 @@ describe('validateCreateForm', () => {
   });
 
   it('reports every missing required field', () => {
-    const result = validateCreateForm(emptyEmployeeFormValues);
+    const result = validateCreateForm(emptyEmployeeFormValues, testRoleCatalog);
 
     expect(result).toEqual({
       ok: false,
@@ -87,7 +92,7 @@ describe('validateCreateForm', () => {
   });
 
   it('requires the hourly rate for a contract employee', () => {
-    const result = validateCreateForm({ ...validContract, hourlyRate: '' });
+    const result = validateCreateForm({ ...validContract, hourlyRate: '' }, testRoleCatalog);
 
     expect(!result.ok && result.error.hourlyRate).toBe('Hourly rate is required for contract employees');
   });
@@ -114,45 +119,98 @@ describe('validateCreateForm', () => {
       'Employee code can only contain letters, digits and -',
     ],
   ])('rejects %s', (_case, override, field, message) => {
-    const result = validateCreateForm({ ...validFullTime, ...override });
+    const result = validateCreateForm({ ...validFullTime, ...override }, testRoleCatalog);
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.error[field]).toBe(message);
   });
 
   it('rejects a contract that ends before the hire date', () => {
-    const result = validateCreateForm({ ...validContract, contractEndDate: '2026-09-30' });
+    const result = validateCreateForm({ ...validContract, contractEndDate: '2026-09-30' }, testRoleCatalog);
 
     expect(!result.ok && result.error.contractEndDate).toBe(
       'Contract end date cannot be before the hire date',
     );
   });
+
+  it('lower-cases the email the way the backend compares it', () => {
+    const result = validateCreateForm({ ...validFullTime, email: ' Zara.Ahmed@Company.com ' }, testRoleCatalog);
+
+    expect(result.ok && result.value.email).toBe('zara.ahmed@company.com');
+  });
+
+  it.each([
+    ['decades in the past', '1890-05-01'],
+    ['years in the future', '2031-01-15'],
+  ])('rejects a hire date %s', (_case, hireDate) => {
+    const result = validateCreateForm({ ...validFullTime, hireDate }, testRoleCatalog);
+
+    expect(!result.ok && result.error.hireDate).toBe('Hire date must be between 1950 and one year from today');
+  });
+
+  it('rejects a password wrapped in spaces', () => {
+    const result = validateCreateForm({ ...validFullTime, password: ' Welcome@2026 ' }, testRoleCatalog);
+
+    expect(!result.ok && result.error.password).toBe('Password cannot start or end with a space');
+  });
+
+  it('sends the role id the database assigned, not a hard-coded one', () => {
+    const catalog = createRoleCatalog([{ id: 42, name: 'EMPLOYEE', description: 'Employee' }]);
+
+    const result = validateCreateForm(validFullTime, catalog);
+
+    expect(result.ok && result.value.role_id).toBe(42);
+  });
+
+  it('rejects a role the database does not hold', () => {
+    const catalog = createRoleCatalog([{ id: 42, name: 'EMPLOYEE', description: 'Employee' }]);
+
+    const result = validateCreateForm({ ...validFullTime, role: 'HR_MANAGER' }, catalog);
+
+    expect(!result.ok && result.error.role).toBe('This role is not available');
+  });
 });
 
 describe('validateUpdateForm', () => {
-  it('round-trips an existing employee, sending only fields an update may change', () => {
-    const priya = employeeSchema.parse(mockEmployees[0]);
+  const priya = employeeSchema.parse(mockEmployees[0]);
+  const priyaValues = formValuesFromEmployee(priya, testRoleCatalog);
 
-    const result = validateUpdateForm({ ...formValuesFromEmployee(priya), isActive: false });
+  it('sends only the fields that changed', () => {
+    const result = validateUpdateForm(
+      { ...priyaValues, jobTitle: 'Head of People', isActive: false },
+      testRoleCatalog,
+      priya,
+    );
 
-    expect(result).toEqual({
-      ok: true,
-      value: {
-        first_name: 'Priya',
-        last_name: 'Sharma',
-        email: 'priya.sharma@company.com',
-        phone: '+91 98765 43210',
-        department: 'Human Resources',
-        job_title: 'HR Manager',
-        role_id: 2,
-        is_active: false,
-        annual_salary: '95000.00',
-      },
-    });
+    expect(result).toEqual({ ok: true, value: { job_title: 'Head of People', is_active: false } });
+  });
+
+  it('sends nothing when the form is unchanged', () => {
+    const result = validateUpdateForm(priyaValues, testRoleCatalog, priya);
+
+    expect(result).toEqual({ ok: true, value: {} });
+  });
+
+  it('treats a reformatted salary as unchanged', () => {
+    const result = validateUpdateForm({ ...priyaValues, annualSalary: '95000' }, testRoleCatalog, priya);
+
+    expect(result).toEqual({ ok: true, value: {} });
+  });
+
+  it('sends a cleared phone as null', () => {
+    const result = validateUpdateForm({ ...priyaValues, phone: '' }, testRoleCatalog, priya);
+
+    expect(result).toEqual({ ok: true, value: { phone: null } });
+  });
+
+  it('still validates fields that did not change', () => {
+    const result = validateUpdateForm({ ...priyaValues, firstName: '' }, testRoleCatalog, priya);
+
+    expect(!result.ok && result.error.firstName).toBe('First name is required');
   });
 
   it('does not require a password or employee code', () => {
-    const result = validateUpdateForm({ ...validFullTime, password: '', employeeCode: '' });
+    const result = validateUpdateForm({ ...priyaValues, password: '', employeeCode: '' }, testRoleCatalog, priya);
 
     expect(result.ok).toBe(true);
   });

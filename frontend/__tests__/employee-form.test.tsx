@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { RoleCatalogProvider } from '../src/auth/role-catalog-context';
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import type { EmployeeDataSource } from '../src/features/employees/employee-data-source';
 import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
@@ -9,6 +10,7 @@ import { createMockEmployeeDataSource } from '../src/features/employees/mock-emp
 import mockEmployees from '../src/features/employees/mock-employees.json';
 import type { EmployeeFormMode } from '../src/features/employees/use-employee-form';
 import type { RoleName } from '../src/types/role-name';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 import { buildSessionUser } from '../test-fixtures/session-users';
 
 type RenderOptions = {
@@ -30,9 +32,11 @@ async function renderForm({
   const onCancel = jest.fn();
   await render(
     <SessionUserProvider user={buildSessionUser(role, userId)}>
-      <EmployeeDataSourceProvider dataSource={{ ...dataSource, createEmployee, updateEmployee }}>
-        <EmployeeForm mode={mode} onSaved={onSaved} onCancel={onCancel} />
-      </EmployeeDataSourceProvider>
+      <RoleCatalogProvider catalog={testRoleCatalog}>
+        <EmployeeDataSourceProvider dataSource={{ ...dataSource, createEmployee, updateEmployee }}>
+          <EmployeeForm mode={mode} onSaved={onSaved} onCancel={onCancel} />
+        </EmployeeDataSourceProvider>
+      </RoleCatalogProvider>
     </SessionUserProvider>,
   );
   return { createEmployee, updateEmployee, onSaved, onCancel };
@@ -82,6 +86,15 @@ describe('EmployeeForm when creating', () => {
     expect(screen.getByText('First name is required')).toBeTruthy();
     expect(screen.getByText('Password must be at least 8 characters')).toBeTruthy();
     expect(createEmployee).not.toHaveBeenCalled();
+  });
+
+  it('caps each input at the length the database column holds', async () => {
+    await renderForm();
+
+    expect(screen.getByLabelText('First name').props.maxLength).toBe(100);
+    expect(screen.getByLabelText('Email').props.maxLength).toBe(255);
+    expect(screen.getByLabelText('Phone (optional)').props.maxLength).toBe(20);
+    expect(screen.getByLabelText('Employee code').props.maxLength).toBe(20);
   });
 
   it('clears a field error as soon as the field is edited', async () => {
@@ -177,12 +190,40 @@ describe('EmployeeForm when editing', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Inactive' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect(updateEmployee).toHaveBeenCalledWith(
-      sofia.id,
-      expect.objectContaining({ job_title: 'Senior QA Engineer', is_active: false }),
-    );
-    expect(updateEmployee.mock.calls[0]?.[1]).not.toHaveProperty('password');
+    // Only the changed fields travel in the PATCH body.
+    expect(updateEmployee).toHaveBeenCalledWith(sofia.id, { job_title: 'Senior QA Engineer', is_active: false });
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ job_title: 'Senior QA Engineer' }));
+  });
+
+  it('does not send a request when nothing changed', async () => {
+    const { updateEmployee, onSaved } = await renderForm({ mode: { kind: 'edit', employee: sofia } });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(updateEmployee).not.toHaveBeenCalled();
+    expect(onSaved).toHaveBeenCalledWith(sofia);
+  });
+
+  it('checks only the email when the field loses focus', async () => {
+    const dataSource = createMockEmployeeDataSource();
+    const checkEmailAvailability = jest.fn(dataSource.checkEmailAvailability);
+    await renderForm({ mode: { kind: 'edit', employee: sofia }, dataSource: { ...dataSource, checkEmailAvailability } });
+
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'priya.sharma@company.com');
+    await fireEvent(screen.getByLabelText('Email'), 'blur');
+
+    expect(await screen.findByText('Another employee already uses this email')).toBeTruthy();
+    expect(checkEmailAvailability).toHaveBeenCalledWith('priya.sharma@company.com', sofia.id);
+  });
+
+  it('skips the email check when the email is unchanged', async () => {
+    const dataSource = createMockEmployeeDataSource();
+    const checkEmailAvailability = jest.fn(dataSource.checkEmailAvailability);
+    await renderForm({ mode: { kind: 'edit', employee: sofia }, dataSource: { ...dataSource, checkEmailAvailability } });
+
+    await fireEvent(screen.getByLabelText('Email'), 'blur');
+
+    expect(checkEmailAvailability).not.toHaveBeenCalled();
   });
 
   it('suggests existing departments and fills the field when one is picked', async () => {

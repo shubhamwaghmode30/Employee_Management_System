@@ -1,7 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { hasPermission } from '../../auth/permissions';
-import { roleIdsByName, roleLabels, roleNames } from '../../auth/roles';
+import { useRoleCatalog } from '../../auth/role-catalog-context';
+import { roleLabels } from '../../auth/roles';
 import { useSessionUser } from '../../auth/session-user-context';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -14,6 +15,7 @@ import { employmentTypeLabels, formatDate } from './employee-labels';
 import type { Employee } from './employee-schemas';
 import { FilterChip } from './FilterChip';
 import { useDepartments } from './use-departments';
+import { fieldMaxLengths } from './employee-form-values';
 import { type EmployeeFormMode, useEmployeeForm } from './use-employee-form';
 
 type EmployeeFormProps = {
@@ -34,8 +36,9 @@ const statusOptions = [
 
 export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
   const user = useSessionUser();
+  const roleCatalog = useRoleCatalog();
   const dataSource = useEmployeeDataSource();
-  const form = useEmployeeForm(dataSource, mode, onSaved);
+  const form = useEmployeeForm(dataSource, roleCatalog, mode, onSaved);
   const departments = useDepartments(dataSource);
   const { values, fieldErrors } = form;
   const isCreating = mode.kind === 'create';
@@ -43,8 +46,9 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
 
   // Only admins may grant the admin role; an existing admin keeps the option so it stays visible.
   const isAdminOptionAvailable =
-    hasPermission(user, 'ROLE_ASSIGN') || (mode.kind === 'edit' && mode.employee.role_id === roleIdsByName.ADMIN);
-  const roleOptions = roleNames
+    hasPermission(user, 'ROLE_ASSIGN') ||
+    (mode.kind === 'edit' && roleCatalog.getRoleName(mode.employee.role_id) === 'ADMIN');
+  const roleOptions = roleCatalog.roleNames
     .filter((roleName) => roleName !== 'ADMIN' || isAdminOptionAvailable)
     .map((roleName) => ({ value: roleName, label: roleLabels[roleName] }));
 
@@ -78,6 +82,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               onChangeText={(text) => form.changeValue('firstName', text)}
               error={fieldErrors.firstName}
               autoComplete="given-name"
+              maxLength={fieldMaxLengths.firstName}
             />
           </View>
           <View style={styles.field}>
@@ -87,6 +92,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               onChangeText={(text) => form.changeValue('lastName', text)}
               error={fieldErrors.lastName}
               autoComplete="family-name"
+              maxLength={fieldMaxLengths.lastName}
             />
           </View>
         </View>
@@ -101,6 +107,8 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              maxLength={fieldMaxLengths.email}
+              onBlur={() => void form.checkEmail()}
             />
           </View>
           <View style={styles.field}>
@@ -112,6 +120,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               placeholder="e.g. +91 98765 43210"
               keyboardType="phone-pad"
               autoComplete="tel"
+              maxLength={fieldMaxLengths.phone}
             />
           </View>
         </View>
@@ -126,6 +135,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               onChangeText={(text) => form.changeValue('department', text)}
               error={fieldErrors.department}
               placeholder="e.g. Engineering"
+              maxLength={fieldMaxLengths.department}
             />
             {departmentSuggestions.length > 0 && (
               <View style={styles.suggestions} accessibilityLabel="Existing departments">
@@ -147,6 +157,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
               onChangeText={(text) => form.changeValue('jobTitle', text)}
               error={fieldErrors.jobTitle}
               placeholder="e.g. Senior Software Engineer"
+              maxLength={fieldMaxLengths.jobTitle}
             />
           </View>
         </View>
@@ -159,6 +170,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
             hint="Format: YYYY-MM-DD"
             placeholder="e.g. 2026-10-09"
             autoCapitalize="none"
+            maxLength={fieldMaxLengths.date}
           />
         ) : (
           <ReadOnlyField label="Hire date" value={formatDate(`${values.hireDate}T00:00:00Z`)} />
@@ -202,6 +214,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
             error={fieldErrors.annualSalary}
             placeholder="e.g. 95000.00"
             keyboardType="decimal-pad"
+            maxLength={fieldMaxLengths.money}
           />
         ) : (
           <View style={styles.fieldRow}>
@@ -213,6 +226,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
                 error={fieldErrors.hourlyRate}
                 placeholder="e.g. 62.50"
                 keyboardType="decimal-pad"
+                maxLength={fieldMaxLengths.money}
               />
             </View>
             <View style={styles.field}>
@@ -224,6 +238,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
                 hint="Format: YYYY-MM-DD"
                 placeholder="e.g. 2026-12-31"
                 autoCapitalize="none"
+                maxLength={fieldMaxLengths.date}
               />
             </View>
           </View>
@@ -241,6 +256,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
                 error={fieldErrors.employeeCode}
                 placeholder="e.g. FT0025"
                 autoCapitalize="characters"
+                maxLength={fieldMaxLengths.employeeCode}
               />
             </View>
             <View style={styles.field}>
@@ -253,6 +269,7 @@ export function EmployeeForm({ mode, onSaved, onCancel }: EmployeeFormProps) {
                 isSecure
                 autoCapitalize="none"
                 autoComplete="new-password"
+                maxLength={fieldMaxLengths.password}
               />
             </View>
           </View>

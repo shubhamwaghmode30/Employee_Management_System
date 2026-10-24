@@ -10,6 +10,9 @@ export function getPageTrail(pathname: string): readonly string[] {
     if (second === 'new') {
       return ['Employees', 'Add employee'];
     }
+    if (second === 'deleted') {
+      return ['Employees', 'Deleted employees'];
+    }
     return third === 'edit' ? ['Employees', 'Edit employee'] : ['Employees', 'Employee details'];
   }
   if (section === 'profile') {

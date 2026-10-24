@@ -13,6 +13,8 @@ type TextFieldProps = {
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
   autoComplete?: TextInputProps['autoComplete'];
+  maxLength?: number;
+  onBlur?: () => void;
   onSubmitEditing?: () => void;
 };
 
@@ -27,6 +29,8 @@ export function TextField({
   keyboardType = 'default',
   autoCapitalize = 'sentences',
   autoComplete = 'off',
+  maxLength,
+  onBlur,
   onSubmitEditing,
 }: TextFieldProps) {
   const hasError = error !== undefined;
@@ -47,6 +51,8 @@ export function TextField({
         autoCapitalize={autoCapitalize}
         autoComplete={autoComplete}
         autoCorrect={false}
+        maxLength={maxLength}
+        onBlur={onBlur}
         onSubmitEditing={onSubmitEditing}
         style={[styles.input, hasError && styles.inputError]}
       />

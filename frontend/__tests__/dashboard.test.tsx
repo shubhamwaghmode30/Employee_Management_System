@@ -1,20 +1,24 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
+import { RoleCatalogProvider } from '../src/auth/role-catalog-context';
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import { Dashboard } from '../src/features/dashboard/Dashboard';
 import type { EmployeeDataSource } from '../src/features/employees/employee-data-source';
 import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
 import { createMockEmployeeDataSource } from '../src/features/employees/mock-employee-data-source';
 import type { RoleName } from '../src/types/role-name';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 import { buildSessionUser } from '../test-fixtures/session-users';
 
 async function renderDashboard(role: RoleName = 'ADMIN', dataSource: EmployeeDataSource = createMockEmployeeDataSource()) {
   const handlers = { onAddEmployee: jest.fn(), onOpenDirectory: jest.fn(), onViewEmployee: jest.fn() };
   await render(
     <SessionUserProvider user={buildSessionUser(role)}>
-      <EmployeeDataSourceProvider dataSource={dataSource}>
-        <Dashboard {...handlers} />
-      </EmployeeDataSourceProvider>
+      <RoleCatalogProvider catalog={testRoleCatalog}>
+        <EmployeeDataSourceProvider dataSource={dataSource}>
+          <Dashboard {...handlers} />
+        </EmployeeDataSourceProvider>
+      </RoleCatalogProvider>
     </SessionUserProvider>,
   );
   return handlers;

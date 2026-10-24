@@ -223,6 +223,19 @@ describe('createMockEmployeeDataSource writes', () => {
     });
   });
 
+  it('keeps a deleted employee for restore, like the deleted_at column', async () => {
+    const dataSource = createMockEmployeeDataSource();
+    const priya = await getPriya(dataSource);
+    await dataSource.deleteEmployee(priya.id);
+
+    const deleted = await dataSource.listDeletedEmployees({ page: 1, page_size: 10 });
+    expect(deleted).toMatchObject({ ok: true, value: { total: 1, items: [{ id: priya.id }] } });
+
+    expect(await dataSource.restoreEmployee(priya.id)).toMatchObject({ ok: true, value: { id: priya.id } });
+    expect(await dataSource.getEmployee(priya.id)).toMatchObject({ ok: true });
+    expect(await dataSource.restoreEmployee(priya.id)).toMatchObject({ ok: false, error: { kind: 'not_found' } });
+  });
+
   it('lists the departments in use, sorted', async () => {
     const result = await createMockEmployeeDataSource().listDepartments();
 

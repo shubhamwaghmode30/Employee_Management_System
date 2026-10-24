@@ -1,17 +1,25 @@
 import { z } from 'zod';
 
 import type { ApiError } from '../../api/api-error';
-import { roleIdsByName, roleNames } from '../../auth/roles';
+import type { Role } from '../../api/schemas/role';
+import { roleNames } from '../../auth/roles';
 import type { Result } from '../../types/result';
 import type { EmployeeDataSource, EmployeeListParams } from './employee-data-source';
 import type { EmployeeCreateInput, EmployeeUpdateInput } from './employee-inputs';
-import { type Employee, employeeSchema } from './employee-schemas';
+import { type DeletedEmployee, type Employee, employeeSchema, type EmployeeSummary } from './employee-schemas';
 import type { EmployeeStats } from './employee-stats-schema';
 import mockEmployees from './mock-employees.json';
 
 type MockEmployeeDataSourceOptions = {
   latencyMs?: number;
 };
+
+/** The roles mock-employees.json refers to by role_id, as a migrated database holds them. */
+export const mockRoles: readonly Role[] = [
+  { id: 1, name: 'ADMIN', description: 'Administrator with full access' },
+  { id: 2, name: 'HR_MANAGER', description: 'HR Manager with read/create/update access' },
+  { id: 3, name: 'EMPLOYEE', description: 'Employee with read-only access' },
+];
 
 const invalidMockDataError: ApiError = {
   kind: 'invalid_response',
@@ -29,6 +37,8 @@ export function createMockEmployeeDataSource({
 }: MockEmployeeDataSourceOptions = {}): EmployeeDataSource {
   const parsedEmployees = z.array(employeeSchema).safeParse(mockEmployees);
   const employees: Employee[] = parsedEmployees.success ? [...parsedEmployees.data] : [];
+  // Soft-deleted rows stay here, like the deleted_at rows of the employees table.
+  const deletedEmployees: { employee: Employee; deletedAt: string }[] = [];
   let createdCount = 0;
 
   async function respond<T>(produce: () => Result<T, ApiError>): Promise<Result<T, ApiError>> {
@@ -74,7 +84,7 @@ export function createMockEmployeeDataSource({
         return {
           ok: true,
           value: {
-            items: matchingEmployees.slice(start, start + params.page_size),
+            items: matchingEmployees.slice(start, start + params.page_size).map(toSummary),
             total: matchingEmployees.length,
             page: params.page,
             page_size: params.page_size,
@@ -117,7 +127,7 @@ export function createMockEmployeeDataSource({
         if (existing === undefined) {
           return { ok: false, error: notFoundError(id) };
         }
-        const conflict = findConflict(input.email, existing.employee_code, id);
+        const conflict = findConflict(input.email ?? existing.email, existing.employee_code, id);
         if (conflict !== null) {
           return { ok: false, error: conflict };
         }
@@ -136,8 +146,38 @@ export function createMockEmployeeDataSource({
         if (index === -1) {
           return { ok: false, error: notFoundError(id) };
         }
-        employees.splice(index, 1);
+        const [removed] = employees.splice(index, 1);
+        if (removed !== undefined) {
+          deletedEmployees.unshift({ employee: removed, deletedAt: new Date().toISOString() });
+        }
         return { ok: true, value: null };
+      });
+    },
+
+    listDeletedEmployees({ page, page_size }) {
+      return respond(() => {
+        const start = (page - 1) * page_size;
+        const items: DeletedEmployee[] = deletedEmployees
+          .slice(start, start + page_size)
+          .map(({ employee, deletedAt }) => ({ ...toSummary(employee), deleted_at: deletedAt, deleted_by_id: null }));
+        return { ok: true, value: { items, total: deletedEmployees.length, page, page_size } };
+      });
+    },
+
+    restoreEmployee(id) {
+      return respond(() => {
+        const index = deletedEmployees.findIndex((entry) => entry.employee.id === id);
+        const entry = deletedEmployees[index];
+        if (entry === undefined) {
+          return { ok: false, error: notFoundError(id) };
+        }
+        const conflict = findConflict(entry.employee.email, entry.employee.employee_code, null);
+        if (conflict !== null) {
+          return { ok: false, error: conflict };
+        }
+        deletedEmployees.splice(index, 1);
+        employees.push(entry.employee);
+        return { ok: true, value: entry.employee };
       });
     },
 
@@ -150,6 +190,19 @@ export function createMockEmployeeDataSource({
 
     getStats() {
       return respond(() => ({ ok: true, value: summarise(employees) }));
+    },
+
+    listRoles() {
+      return respond(() => ({ ok: true, value: [...mockRoles] }));
+    },
+
+    checkEmailAvailability(email, excludingId) {
+      return respond(() => ({
+        ok: true,
+        value: !employees.some(
+          (employee) => employee.id !== excludingId && employee.email.toLowerCase() === email.toLowerCase(),
+        ),
+      }));
     },
   };
 }
@@ -174,10 +227,32 @@ function summarise(employees: readonly Employee[]): EmployeeStats {
     by_role: roleNames
       .map((role) => ({
         role,
-        count: employees.filter((employee) => employee.role_id === roleIdsByName[role]).length,
+        count: employees.filter(
+          (employee) => mockRoles.find((mockRole) => mockRole.id === employee.role_id)?.name === role,
+        ).length,
       }))
       .filter((entry) => entry.count > 0),
-    recent_hires: [...employees].sort((first, second) => second.hire_date.localeCompare(first.hire_date)).slice(0, 5),
+    recent_hires: [...employees]
+      .sort((first, second) => second.hire_date.localeCompare(first.hire_date))
+      .slice(0, 5)
+      .map(toSummary),
+  };
+}
+
+/** The row shape list endpoints return, so screens never rely on fields the API leaves out. */
+function toSummary(employee: Employee): EmployeeSummary {
+  return {
+    id: employee.id,
+    employee_code: employee.employee_code,
+    first_name: employee.first_name,
+    last_name: employee.last_name,
+    email: employee.email,
+    department: employee.department,
+    job_title: employee.job_title,
+    hire_date: employee.hire_date,
+    is_active: employee.is_active,
+    role_id: employee.role_id,
+    employment_type: employee.employment_type,
   };
 }
 
@@ -213,32 +288,37 @@ function toEmployee(input: EmployeeCreateInput, fields: ServerManagedFields): Em
   };
 }
 
-/** Applies a PATCH body the way EmployeeService.update_employee does, or null on a pay mismatch. */
+/**
+ * Applies a partial PATCH body the way EmployeeService.update_employee does:
+ * fields left out keep their value. Returns null on a pay mismatch.
+ */
 function applyUpdate(existing: Employee, input: EmployeeUpdateInput): Employee | null {
   const details = {
-    first_name: input.first_name,
-    last_name: input.last_name,
-    email: input.email,
-    phone: input.phone,
-    department: input.department,
-    job_title: input.job_title,
-    role_id: input.role_id,
-    is_active: input.is_active,
+    first_name: input.first_name ?? existing.first_name,
+    last_name: input.last_name ?? existing.last_name,
+    email: input.email ?? existing.email,
+    phone: input.phone === undefined ? existing.phone : input.phone,
+    department: input.department ?? existing.department,
+    job_title: input.job_title ?? existing.job_title,
+    role_id: input.role_id ?? existing.role_id,
+    is_active: input.is_active ?? existing.is_active,
     updated_at: new Date().toISOString(),
   };
   if (existing.employment_type === 'FULL_TIME') {
-    return 'annual_salary' in input
-      ? { ...existing, ...details, annual_salary: input.annual_salary }
-      : null;
+    if (input.hourly_rate !== undefined || input.contract_end_date !== undefined) {
+      return null;
+    }
+    return { ...existing, ...details, annual_salary: input.annual_salary ?? existing.annual_salary };
   }
-  return 'hourly_rate' in input
-    ? {
-        ...existing,
-        ...details,
-        hourly_rate: input.hourly_rate,
-        contract_end_date: input.contract_end_date,
-      }
-    : null;
+  if (input.annual_salary !== undefined) {
+    return null;
+  }
+  return {
+    ...existing,
+    ...details,
+    hourly_rate: input.hourly_rate ?? existing.hourly_rate,
+    contract_end_date: input.contract_end_date === undefined ? existing.contract_end_date : input.contract_end_date,
+  };
 }
 
 function notFoundError(id: string): ApiError {

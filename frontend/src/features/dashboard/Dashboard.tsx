@@ -10,7 +10,7 @@ import { StatusMessage } from '../../components/StatusMessage';
 import { useBreakpoint } from '../../hooks/use-breakpoint';
 import { colors, spacing } from '../../theme';
 import { useEmployeeDataSource } from '../employees/employee-data-source-context';
-import type { Employee } from '../employees/employee-schemas';
+import type { EmployeeSummary } from '../employees/employee-schemas';
 import type { EmployeeStats } from '../employees/employee-stats-schema';
 import { ActiveRateMeter } from './ActiveRateMeter';
 import { CompositionBar } from './CompositionBar';
@@ -22,7 +22,7 @@ import { useDashboardStats } from './use-dashboard-stats';
 type DashboardProps = {
   onAddEmployee: () => void;
   onOpenDirectory: () => void;
-  onViewEmployee: (employee: Employee) => void;
+  onViewEmployee: (employee: EmployeeSummary) => void;
 };
 
 function getGreeting(hour: number): string {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { employeeSchema } from './employee-schemas';
+import { employeeSummarySchema } from './employee-schemas';
 
 /** Mirrors EmployeeStats in backend app/schemas/employee_stats.py. */
 export const employeeStatsSchema = z.object({
@@ -13,7 +13,7 @@ export const employeeStatsSchema = z.object({
   by_role: z.array(
     z.object({ role: z.enum(['ADMIN', 'HR_MANAGER', 'EMPLOYEE']), count: z.number().int().nonnegative() }),
   ),
-  recent_hires: z.array(employeeSchema),
+  recent_hires: z.array(employeeSummarySchema),
 });
 
 export type EmployeeStats = z.infer<typeof employeeStatsSchema>;

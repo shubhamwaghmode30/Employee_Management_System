@@ -2,9 +2,9 @@ import type { Permission } from '../src/types/permission';
 import type { RoleName } from '../src/types/role-name';
 import type { SessionUser } from '../src/types/session-user';
 
-/** Permissions per role, as the backend role policies grant them. */
+/** Permissions per role, as the backend migrations grant them in role_permissions. */
 export const permissionsByRole: Record<RoleName, readonly Permission[]> = {
-  ADMIN: ['EMPLOYEE_CREATE', 'EMPLOYEE_DELETE', 'EMPLOYEE_READ', 'EMPLOYEE_UPDATE', 'ROLE_ASSIGN'],
+  ADMIN: ['EMPLOYEE_CREATE', 'EMPLOYEE_DELETE', 'EMPLOYEE_READ', 'EMPLOYEE_RESTORE', 'EMPLOYEE_UPDATE', 'ROLE_ASSIGN'],
   HR_MANAGER: ['EMPLOYEE_CREATE', 'EMPLOYEE_READ', 'EMPLOYEE_UPDATE'],
   EMPLOYEE: ['EMPLOYEE_READ'],
 };

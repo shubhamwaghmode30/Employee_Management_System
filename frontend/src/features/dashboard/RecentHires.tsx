@@ -3,13 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../../components/Avatar';
 import { colors, spacing, typography } from '../../theme';
 import { formatDate, getFullName } from '../employees/employee-labels';
-import type { Employee } from '../employees/employee-schemas';
+import type { EmployeeSummary } from '../employees/employee-schemas';
 import { EmploymentTypeBadge } from '../employees/EmploymentTypeBadge';
 
 type RecentHiresProps = {
-  employees: readonly Employee[];
+  employees: readonly EmployeeSummary[];
   isCompact: boolean;
-  onViewEmployee: (employee: Employee) => void;
+  onViewEmployee: (employee: EmployeeSummary) => void;
 };
 
 export function RecentHires({ employees, isCompact, onViewEmployee }: RecentHiresProps) {

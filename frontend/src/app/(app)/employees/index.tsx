@@ -10,6 +10,7 @@ export default function EmployeesScreen() {
       onCreateEmployee={() => router.push('/employees/new')}
       onViewEmployee={(employee) => router.push(`/employees/${employee.id}`)}
       onEditEmployee={(employee) => router.push(`/employees/${employee.id}/edit`)}
+      onOpenDeletedEmployees={() => router.push('/employees/deleted')}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { RoleCatalogProvider } from '../src/auth/role-catalog-context';
 import { SessionUserProvider } from '../src/auth/session-user-context';
 import type { EmployeeDataSource } from '../src/features/employees/employee-data-source';
 import { EmployeeDataSourceProvider } from '../src/features/employees/employee-data-source-context';
@@ -8,6 +9,7 @@ import { createMockEmployeeDataSource } from '../src/features/employees/mock-emp
 import { useBreakpoint } from '../src/hooks/use-breakpoint';
 import type { Breakpoint } from '../src/types/breakpoint';
 import type { RoleName } from '../src/types/role-name';
+import { testRoleCatalog } from '../test-fixtures/role-catalog';
 import { buildSessionUser } from '../test-fixtures/session-users';
 
 jest.mock('../src/hooks/use-breakpoint');
@@ -34,12 +36,15 @@ async function renderDirectory({
     onCreateEmployee: jest.fn(),
     onViewEmployee: jest.fn(),
     onEditEmployee: jest.fn(),
+    onOpenDeletedEmployees: jest.fn(),
   };
   await render(
     <SessionUserProvider user={buildSessionUser(role, userId)}>
-      <EmployeeDataSourceProvider dataSource={{ ...dataSource, listEmployees, deleteEmployee }}>
-        <EmployeeDirectory {...handlers} />
-      </EmployeeDataSourceProvider>
+      <RoleCatalogProvider catalog={testRoleCatalog}>
+        <EmployeeDataSourceProvider dataSource={{ ...dataSource, listEmployees, deleteEmployee }}>
+          <EmployeeDirectory {...handlers} />
+        </EmployeeDataSourceProvider>
+      </RoleCatalogProvider>
     </SessionUserProvider>,
   );
   return { listEmployees, deleteEmployee, ...handlers };
@@ -98,9 +103,20 @@ describe('EmployeeDirectory role-based controls', () => {
     expect(screen.getByRole('button', { name: 'Delete Emily Carter' })).toBeTruthy();
   });
 
+  it('offers deleted employees only to roles granted EMPLOYEE_RESTORE', async () => {
+    const { onOpenDeletedEmployees } = await renderDirectory({ role: 'ADMIN' });
+    await screen.findByText('Emily Carter');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Deleted employees' }));
+
+    expect(onOpenDeletedEmployees).toHaveBeenCalledTimes(1);
+  });
+
   it('shows create and edit but not delete to an HR manager', async () => {
     await renderDirectory({ role: 'HR_MANAGER' });
     await screen.findByText('Emily Carter');
+
+    expect(screen.queryByRole('button', { name: 'Deleted employees' })).toBeNull();
 
     expect(screen.getByRole('button', { name: 'Add employee' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Edit Emily Carter' })).toBeTruthy();
@@ -212,6 +228,52 @@ describe('EmployeeDirectory pagination', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Previous page' }));
     expect(await screen.findByText('Showing 11–20 of 24 employees')).toBeTruthy();
+  });
+});
+
+describe('EmployeeDirectory heavy pages', () => {
+  it('requests a bigger page when the user picks more rows per page', async () => {
+    const { listEmployees } = await renderDirectory();
+    await screen.findByText('Showing 1–10 of 24 employees');
+
+    await fireEvent.press(screen.getByRole('button', { name: '25' }));
+
+    expect(await screen.findByText('Showing 1–24 of 24 employees')).toBeTruthy();
+    expect(listEmployees).toHaveBeenLastCalledWith({ page: 1, page_size: 25 });
+    expect(screen.getByText('Page 1 of 1')).toBeTruthy();
+  });
+
+  it('mounts only the rows near the viewport of a 100-row page', async () => {
+    const workingSource = createMockEmployeeDataSource();
+    const hundredRows = Array.from({ length: 100 }, (_, index) => ({
+      id: `0d6f4c2a-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      employee_code: `FT${String(index).padStart(4, '0')}`,
+      first_name: 'Arjun',
+      last_name: `Mehta ${index}`,
+      email: `arjun.mehta${index}@company.com`,
+      department: 'Engineering',
+      job_title: 'Backend Engineer',
+      hire_date: '2024-01-15T00:00:00Z',
+      is_active: true,
+      role_id: 3,
+      employment_type: 'FULL_TIME' as const,
+    }));
+    await renderDirectory({
+      breakpoint: 'mobile',
+      dataSource: {
+        ...workingSource,
+        listEmployees: async () => ({
+          ok: true,
+          value: { items: hundredRows, total: 100, page: 1, page_size: 100 },
+        }),
+      },
+    });
+    // The pagination footer only mounts once the list is scrolled to its end.
+    await screen.findByText('100 total records');
+
+    const mountedRows = screen.getAllByRole('link', { name: /^Arjun Mehta / }).length;
+    expect(mountedRows).toBeGreaterThan(0);
+    expect(mountedRows).toBeLessThan(100);
   });
 });
 

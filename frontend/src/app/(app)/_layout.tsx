@@ -7,6 +7,7 @@ import { AppShell } from '../../components/AppShell';
 import { StatusMessage } from '../../components/StatusMessage';
 import { createApiEmployeeDataSource } from '../../features/employees/api-employee-data-source';
 import { EmployeeDataSourceProvider } from '../../features/employees/employee-data-source-context';
+import { RoleCatalogGate } from '../../features/employees/RoleCatalogGate';
 
 /** Route guard: everything under (app) needs a signed-in user. */
 export default function AppLayout() {
@@ -24,7 +25,9 @@ export default function AppLayout() {
     <SessionUserProvider user={state.user}>
       <EmployeeDataSourceProvider dataSource={employeeDataSource}>
         <AppShell user={state.user} onLogout={() => void signOut()}>
-          <Slot />
+          <RoleCatalogGate>
+            <Slot />
+          </RoleCatalogGate>
         </AppShell>
       </EmployeeDataSourceProvider>
     </SessionUserProvider>

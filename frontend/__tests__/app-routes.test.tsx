@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
+import { mockRoles } from '../src/features/employees/mock-employee-data-source';
 import mockEmployees from '../src/features/employees/mock-employees.json';
 import type { StoredTokens } from '../src/storage/token-storage';
 
@@ -50,6 +51,9 @@ async function fakeBackend(input: string, init?: RequestInit): Promise<Response>
   }
   if (path === '/auth/me') {
     return json(200, currentUser);
+  }
+  if (path === '/roles') {
+    return json(200, mockRoles);
   }
   if (path === '/employees/departments') {
     return json(200, [...new Set(mockEmployees.map((employee) => employee.department))].sort());

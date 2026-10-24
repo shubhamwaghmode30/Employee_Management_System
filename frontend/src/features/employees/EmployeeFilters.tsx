@@ -11,6 +11,9 @@ const statusOptions: readonly { value: StatusFilter; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
 ];
 
+// GET /employees rejects a q longer than this.
+const searchMaxLength = 100;
+
 type EmployeeFiltersProps = {
   departments: readonly string[];
   searchText: string;
@@ -40,6 +43,7 @@ export function EmployeeFilters({
             placeholderTextColor={colors.placeholder}
             value={searchText}
             onChangeText={onSearchTextChange}
+            maxLength={searchMaxLength}
             autoCapitalize="none"
             autoCorrect={false}
             clearButtonMode="while-editing"

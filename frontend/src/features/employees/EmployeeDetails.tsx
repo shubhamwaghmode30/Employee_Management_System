@@ -1,7 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { hasPermission } from '../../auth/permissions';
-import { getRoleName, roleLabels } from '../../auth/roles';
+import { useRoleCatalog } from '../../auth/role-catalog-context';
+import { roleLabels } from '../../auth/roles';
 import { useSessionUser } from '../../auth/session-user-context';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
@@ -29,6 +30,7 @@ type EmployeeDetailsProps = {
 
 export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: EmployeeDetailsProps) {
   const user = useSessionUser();
+  const roleCatalog = useRoleCatalog();
   const dataSource = useEmployeeDataSource();
   const details = useEmployeeDetails(dataSource, employeeId);
   const deletion = useEmployeeDeletion(dataSource, onDeleted);
@@ -57,7 +59,7 @@ export function EmployeeDetails({ employeeId, onBack, onEdit, onDeleted }: Emplo
 
   const { employee } = details.state;
   const fullName = getFullName(employee);
-  const roleName = getRoleName(employee.role_id);
+  const roleName = roleCatalog.getRoleName(employee.role_id);
   const isSelf = employee.id === user.id;
   const canEdit = hasPermission(user, 'EMPLOYEE_UPDATE');
   const canDelete = hasPermission(user, 'EMPLOYEE_DELETE') && !isSelf;

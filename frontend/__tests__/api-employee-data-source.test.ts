@@ -1,6 +1,7 @@
 import { createApiClient, type FetchFunction } from '../src/api/api-client';
 import { createApiEmployeeDataSource } from '../src/features/employees/api-employee-data-source';
 import type { EmployeeCreateInput } from '../src/features/employees/employee-inputs';
+import { createMockEmployeeDataSource } from '../src/features/employees/mock-employee-data-source';
 import mockEmployees from '../src/features/employees/mock-employees.json';
 
 const baseUrl = 'http://localhost:8000/api/v1';
@@ -17,7 +18,10 @@ function setup(status: number, body: string | null) {
 
 describe('createApiEmployeeDataSource', () => {
   it('requests GET /employees with the list params and validates the page', async () => {
-    const responseBody = { items: mockEmployees.slice(0, 2), total: 24, page: 1, page_size: 2 };
+    // The API sends summary rows, without phone, pay or audit fields.
+    const summaryRows = await createMockEmployeeDataSource().listEmployees({ page: 1, page_size: 2 });
+    const responseBody = { items: summaryRows.ok ? summaryRows.value.items : [], total: 24, page: 1, page_size: 2 };
+    expect(responseBody.items[0]).not.toHaveProperty('annual_salary');
     const { dataSource, fetchFunction } = setup(200, JSON.stringify(responseBody));
 
     const result = await dataSource.listEmployees({
@@ -89,6 +93,21 @@ describe('createApiEmployeeDataSource', () => {
     expect(fetchFunction).toHaveBeenCalledWith(
       `${baseUrl}/employees/05b12d14-6099-4228-9c6b-35294501d132`,
       expect.objectContaining({ method: 'PATCH' }),
+    );
+  });
+
+  it('checks an email by posting only the email and the record to ignore', async () => {
+    const { dataSource, fetchFunction } = setup(200, JSON.stringify({ is_available: false }));
+
+    const result = await dataSource.checkEmailAvailability('priya.sharma@company.com', null);
+
+    expect(result).toEqual({ ok: true, value: false });
+    expect(fetchFunction).toHaveBeenCalledWith(
+      `${baseUrl}/employees/email-availability`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'priya.sharma@company.com', excluding_id: null }),
+      }),
     );
   });
 
