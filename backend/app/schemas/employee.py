@@ -126,10 +126,48 @@ class EmployeeRead(BaseModel):
     contract_end_date: datetime | None = None
 
 
-class PaginatedEmployees(BaseModel):
-    """Schema for paginated employee list response."""
+class EmployeeSummary(BaseModel):
+    """List row: only what directory screens show, without pay or audit fields."""
 
-    items: list[EmployeeRead]
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    employee_code: str
+    first_name: str
+    last_name: str
+    email: str
+    department: str
+    job_title: str
+    hire_date: datetime
+    is_active: bool
+    role_id: int
+    employment_type: EmploymentType
+
+
+class DeletedEmployeeSummary(EmployeeSummary):
+    """List row for a soft-deleted employee, with when and by whom."""
+
+    deleted_at: datetime
+    deleted_by_id: str | None = None
+
+
+class PaginatedDeletedEmployees(BaseModel):
+    """Schema for the paginated list of soft-deleted employees."""
+
+    items: list[DeletedEmployeeSummary]
+    total: int
+    page: int
+    page_size: int
+
+
+class PaginatedEmployees(BaseModel):
+    """Schema for paginated employee list response.
+
+    Rows are summaries: a page of the directory never carries pay or audit
+    fields, which GET /employees/{id} returns for one employee.
+    """
+
+    items: list[EmployeeSummary]
     total: int
     page: int
     page_size: int
@@ -144,3 +182,16 @@ class EmployeeSearchParams(BaseModel):
     department: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
 
+
+
+class EmailAvailabilityRequest(BaseModel):
+    """Body for checking an email before submitting a whole employee form."""
+
+    email: EmailStr
+    excluding_id: str | None = Field(default=None, max_length=36)
+
+
+class EmailAvailabilityResponse(BaseModel):
+    """Whether no live employee other than excluding_id uses the email."""
+
+    is_available: bool

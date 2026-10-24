@@ -1,6 +1,8 @@
-"""Idempotent seed script for roles and bootstrap admin.
+"""Idempotent seed script for the bootstrap admin and sample employees.
 
-Run from backend/ directory:
+Roles, permissions and grants are reference data created by the Alembic
+migrations, so run them first. From the backend/ directory:
+    alembic upgrade head
     python scripts/seed.py
 """
 
@@ -14,30 +16,11 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import app.models  # noqa: F401
-from app.core.database import Base, SessionLocal, engine
+from app.core.database import SessionLocal
 from app.core.security import Argon2PasswordHasher
 from app.domain.primitives import EmploymentType, RoleName
 from app.models.employee import ContractEmployee, Employee, FullTimeEmployee
 from app.models.role import Role
-
-
-def seed_roles(session: Session) -> None:
-    """Insert the three system roles if they don't exist."""
-    roles = [
-        Role(name=RoleName.ADMIN, description="Administrator with full access"),
-        Role(
-            name=RoleName.HR_MANAGER,
-            description="HR Manager with read/create/update access",
-        ),
-        Role(name=RoleName.EMPLOYEE, description="Employee with read-only access"),
-    ]
-
-    for role in roles:
-        existing = session.query(Role).filter_by(name=role.name).first()
-        if not existing:
-            session.add(role)
-
-    session.commit()
 
 
 def seed_admin(session: Session) -> None:
@@ -52,7 +35,7 @@ def seed_admin(session: Session) -> None:
 
     admin_role = session.query(Role).filter_by(name=RoleName.ADMIN).first()
     if not admin_role:
-        raise ValueError("Admin role not found. Run seed_roles first.")
+        raise ValueError("Admin role not found. Run alembic upgrade head first.")
 
     existing_admin = (
         session.query(FullTimeEmployee)
@@ -90,7 +73,9 @@ def seed_sample_employees(session: Session) -> None:
     employee_role = session.query(Role).filter_by(name=RoleName.EMPLOYEE).first()
 
     if not hr_role or not employee_role:
-        raise ValueError("HR Manager and Employee roles must exist first.")
+        raise ValueError(
+            "HR Manager and Employee roles not found. Run alembic upgrade head first."
+        )
 
     hasher = Argon2PasswordHasher()
 
@@ -165,11 +150,8 @@ def main() -> None:
     """Run all seed operations."""
     # SEED_* values may live in .env; variables already exported take precedence.
     load_dotenv()
-    Base.metadata.create_all(engine)
-
     session = SessionLocal()
     try:
-        seed_roles(session)
         seed_admin(session)
         seed_sample_employees(session)
         print("Seed completed successfully.")

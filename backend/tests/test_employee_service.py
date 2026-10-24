@@ -50,15 +50,9 @@ def hasher() -> Argon2PasswordHasher:
 
 
 @pytest.fixture
-def roles(db_session: Session) -> dict[RoleName, Role]:
-    """Create the three system roles."""
-    created = {
-        name: Role(name=name, description=name.value.replace("_", " ").title())
-        for name in RoleName
-    }
-    db_session.add_all(created.values())
-    db_session.commit()
-    return created
+def roles(default_roles: dict[RoleName, Role]) -> dict[RoleName, Role]:
+    """Create the three system roles with their default grants."""
+    return default_roles
 
 
 @pytest.fixture
@@ -206,7 +200,7 @@ class TestCreateEmployee:
                 full_time_payload(role, "kavya.iyer@company.com", "ENG001"), admin
             )
 
-    def test_rejects_email_of_soft_deleted_employee(
+    def test_reuses_email_and_code_of_soft_deleted_employee(
         self,
         service: EmployeeService,
         roles: dict[RoleName, Role],
@@ -216,10 +210,10 @@ class TestCreateEmployee:
         created = service.create_employee(full_time_payload(role), admin)
         service.delete_employee(str(created.id), admin)
 
-        with pytest.raises(DuplicateEmailError):
-            service.create_employee(
-                full_time_payload(role, employee_code="ENG002"), admin
-            )
+        rehired = service.create_employee(full_time_payload(role), admin)
+
+        assert rehired.id != created.id
+        assert rehired.email == created.email
 
     def test_rejects_unknown_role(
         self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
@@ -423,12 +417,76 @@ class TestDeleteEmployee:
         service.delete_employee(str(created.id), admin)
 
         assert created.deleted_at is not None
+        assert created.deleted_by_id == str(admin.id)
 
     def test_cannot_delete_self(
         self, service: EmployeeService, admin: Employee
     ) -> None:
         with pytest.raises(SelfActionError):
             service.delete_employee(str(admin.id), admin)
+
+
+class TestRestoreEmployee:
+    def test_restores_soft_deleted_employee(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        service.delete_employee(str(created.id), admin)
+
+        restored = service.restore_employee(str(created.id))
+
+        assert restored.deleted_at is None
+        assert restored.deleted_by_id is None
+        assert service.get_employee(str(created.id)).id == created.id
+
+    def test_lists_deleted_employees(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+        service.delete_employee(str(created.id), admin)
+
+        deleted, total = service.list_deleted_employees()
+
+        assert total == 1
+        assert [employee.id for employee in deleted] == [created.id]
+
+    def test_live_employee_cannot_be_restored(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        created = service.create_employee(
+            full_time_payload(roles[RoleName.EMPLOYEE]), admin
+        )
+
+        with pytest.raises(EntityNotFoundError):
+            service.restore_employee(str(created.id))
+
+    def test_restore_rejects_email_reused_by_live_employee(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        created = service.create_employee(full_time_payload(role), admin)
+        service.delete_employee(str(created.id), admin)
+        service.create_employee(full_time_payload(role, employee_code="ENG002"), admin)
+
+        with pytest.raises(DuplicateEmailError):
+            service.restore_employee(str(created.id))
+
+    def test_restore_rejects_code_reused_by_live_employee(
+        self, service: EmployeeService, roles: dict[RoleName, Role], admin: Employee
+    ) -> None:
+        role = roles[RoleName.EMPLOYEE]
+        created = service.create_employee(full_time_payload(role), admin)
+        service.delete_employee(str(created.id), admin)
+        service.create_employee(
+            full_time_payload(role, "kavya.iyer@company.com"), admin
+        )
+
+        with pytest.raises(DuplicateEmployeeCodeError):
+            service.restore_employee(str(created.id))
 
 
 class TestChangePassword:

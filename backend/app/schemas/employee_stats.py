@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 
 from app.domain.primitives import RoleName
-from app.schemas.employee import EmployeeRead
+from app.schemas.employee import EmployeeSummary
 
 
 class DepartmentHeadcount(BaseModel):
@@ -30,4 +30,4 @@ class EmployeeStats(BaseModel):
     contract: int
     by_department: list[DepartmentHeadcount]
     by_role: list[RoleHeadcount]
-    recent_hires: list[EmployeeRead]
+    recent_hires: list[EmployeeSummary]

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -26,14 +26,10 @@ class Employee(Base):
     id: Mapped[UUID] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
-    employee_code: Mapped[str] = mapped_column(
-        String(20), unique=True, index=True, nullable=False
-    )
+    employee_code: Mapped[str] = mapped_column(String(20), nullable=False)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True
-    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     department: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -56,7 +52,10 @@ class Employee(Base):
         nullable=False,
     )
     deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, default=None
+        DateTime(timezone=True), nullable=True, default=None, index=True
+    )
+    deleted_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, default=None
     )
 
     role: Mapped["Role"] = relationship("Role")
@@ -64,6 +63,25 @@ class Employee(Base):
     __mapper_args__ = {
         "polymorphic_on": "employment_type",
     }
+
+    # Uniqueness applies to live rows only, so a soft-deleted employee's email
+    # and code can be reused. Restoring checks for a clash first.
+    __table_args__ = (
+        Index(
+            "uq_employees_email_live",
+            "email",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "uq_employees_employee_code_live",
+            "employee_code",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     def summary_label(self) -> str:
         """Return a human-readable summary of the employee.

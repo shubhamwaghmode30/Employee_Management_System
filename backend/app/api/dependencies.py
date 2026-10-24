@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import Argon2PasswordHasher, PasswordHasher
 from app.core.tokens import JwtTokenService, TokenService
-from app.domain.primitives import InvalidTokenError, Permission, RoleName
+from app.domain.primitives import InvalidTokenError, Permission
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
@@ -83,36 +83,13 @@ def require_permission(
         employee: Employee = Depends(get_current_employee),
         role_repo: RoleRepository = Depends(get_role_repository),
     ) -> Employee:
-        """Check if the employee has the required permission."""
+        """Check the employee's role grants the permission in role_permissions."""
         role = role_repo.get_by_id(employee.role_id)
-        if not role:
+        if role is None or required_permission not in role.permission_names():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
             )
-
-        from app.domain.primitives import AdminPolicy, EmployeePolicy, HrManagerPolicy
-
-        policy_map: dict[RoleName, type] = {
-            RoleName.ADMIN: AdminPolicy,
-            RoleName.HR_MANAGER: HrManagerPolicy,
-            RoleName.EMPLOYEE: EmployeePolicy,
-        }
-
-        policy_class = policy_map.get(role.name)
-        if not policy_class:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
-
-        policy = policy_class()
-        if required_permission not in policy.permissions():
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
-
         return employee
 
     return check_permission

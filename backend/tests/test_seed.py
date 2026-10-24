@@ -7,42 +7,53 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
+from app.domain.primitives import RoleName
 from app.models.employee import Employee
 from app.models.role import Role
-from scripts.seed import seed_admin, seed_roles, seed_sample_employees
+from scripts.seed import seed_admin, seed_sample_employees
 
 
 @pytest.fixture
-def session() -> Generator[Session, None, None]:
+def db_session() -> Generator[Session, None, None]:
     """Use an in-memory database so seeding never touches the dev database."""
     engine = create_engine(
         "sqlite:///:memory:", connect_args={"check_same_thread": False}
     )
     Base.metadata.create_all(engine)
-    db_session = sessionmaker(bind=engine)()
+    session = sessionmaker(bind=engine)()
     try:
-        yield db_session
+        yield session
     finally:
-        db_session.close()
+        session.close()
         Base.metadata.drop_all(engine)
 
 
-def test_seed_idempotency(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_seed_idempotency(
+    db_session: Session,
+    default_roles: dict[RoleName, Role],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Test that running seed twice creates no duplicates."""
     monkeypatch.setenv("SEED_ADMIN_EMAIL", "neha.kapoor@company.com")
     monkeypatch.setenv("SEED_ADMIN_PASSWORD", "Admin@Seed2026")
     monkeypatch.setenv("SEED_SAMPLE_PASSWORD", "Sample@Seed2026")
 
-    seed_roles(session)
-    seed_admin(session)
-    seed_sample_employees(session)
+    seed_admin(db_session)
+    seed_sample_employees(db_session)
+    employee_count_before = db_session.query(Employee).count()
 
-    role_count_before = session.query(Role).count()
-    employee_count_before = session.query(Employee).count()
+    seed_admin(db_session)
+    seed_sample_employees(db_session)
 
-    seed_roles(session)
-    seed_admin(session)
-    seed_sample_employees(session)
+    assert db_session.query(Employee).count() == employee_count_before == 5
 
-    assert session.query(Role).count() == role_count_before == 3
-    assert session.query(Employee).count() == employee_count_before == 5
+
+def test_seed_admin_requires_migrated_roles(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Roles come from migrations, so seeding an unmigrated database fails."""
+    monkeypatch.setenv("SEED_ADMIN_EMAIL", "neha.kapoor@company.com")
+    monkeypatch.setenv("SEED_ADMIN_PASSWORD", "Admin@Seed2026")
+
+    with pytest.raises(ValueError, match="alembic upgrade head"):
+        seed_admin(db_session)

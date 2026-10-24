@@ -16,7 +16,7 @@ from app.models.employee import ContractEmployee, Employee, FullTimeEmployee
 from app.models.role import Role
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
-from app.schemas.employee import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.schemas.employee import EmployeeCreate, EmployeeSummary, EmployeeUpdate
 from app.schemas.employee_stats import (
     DepartmentHeadcount,
     EmployeeStats,
@@ -47,7 +47,7 @@ class EmployeeService:
             DuplicateEmailError: The email is already registered.
             DuplicateEmployeeCodeError: The employee code is already used.
             InvalidEmployeeDataError: The role does not exist.
-            AuthorizationError: A non-admin tried to assign the ADMIN role.
+            AuthorizationError: The actor lacks ROLE_ASSIGN and chose ADMIN.
         """
         if self.employee_repo.is_email_taken(data.email):
             raise DuplicateEmailError(data.email)
@@ -115,7 +115,7 @@ class EmployeeService:
             EntityNotFoundError: No such employee.
             DuplicateEmailError: The new email belongs to someone else.
             SelfActionError: The actor tried to deactivate themselves.
-            AuthorizationError: A non-admin tried to grant the ADMIN role.
+            AuthorizationError: The actor lacks ROLE_ASSIGN and chose ADMIN.
             InvalidEmployeeDataError: Pay fields do not match the employment
                 type, or the role does not exist.
         """
@@ -172,7 +172,30 @@ class EmployeeService:
         employee = self.get_employee(employee_id)
         if employee.id == actor.id:
             raise SelfActionError("delete")
-        self.employee_repo.soft_delete(employee)
+        self.employee_repo.soft_delete(employee, deleted_by_id=str(actor.id))
+
+    def list_deleted_employees(
+        self, page: int = 1, page_size: int = 10
+    ) -> tuple[list[Employee], int]:
+        """Page through soft-deleted employees, most recently deleted first."""
+        return self.employee_repo.search_deleted(page=page, page_size=page_size)
+
+    def restore_employee(self, employee_id: str) -> Employee:
+        """Undo a soft delete.
+
+        Raises:
+            EntityNotFoundError: No soft-deleted employee has this id.
+            DuplicateEmailError: A live employee now uses the same email.
+            DuplicateEmployeeCodeError: A live employee now uses the same code.
+        """
+        employee = self.employee_repo.get_deleted_by_id(employee_id)
+        if employee is None:
+            raise EntityNotFoundError("Deleted employee", employee_id)
+        if self.employee_repo.is_email_taken(employee.email):
+            raise DuplicateEmailError(employee.email)
+        if self.employee_repo.is_employee_code_taken(employee.employee_code):
+            raise DuplicateEmployeeCodeError(employee.employee_code)
+        return self.employee_repo.restore(employee)
 
     def change_password(
         self, employee: Employee, current_password: str, new_password: str
@@ -209,6 +232,10 @@ class EmployeeService:
             is_active=is_active,
         )
 
+    def is_email_available(self, email: str, excluding_id: str | None) -> bool:
+        """Return True when no other live employee uses the email."""
+        return not self.employee_repo.is_email_taken(email, excluding_id=excluding_id)
+
     def list_departments(self) -> list[str]:
         """Return the departments currently in use."""
         return self.employee_repo.list_departments()
@@ -239,7 +266,7 @@ class EmployeeService:
             ],
             by_role=by_role,
             recent_hires=[
-                EmployeeRead.model_validate(employee)
+                EmployeeSummary.model_validate(employee)
                 for employee in self.employee_repo.list_recent_hires(
                     RECENT_HIRES_LIMIT
                 )
@@ -247,13 +274,16 @@ class EmployeeService:
         )
 
     def _get_assignable_role(self, role_id: int, actor: Employee) -> Role:
-        """Load a role and check that the actor may grant it."""
+        """Load a role; granting ADMIN needs the ROLE_ASSIGN permission."""
         role = self.role_repo.get_by_id(role_id)
         if role is None:
             raise InvalidEmployeeDataError(f"Role {role_id} does not exist")
         if role.name == RoleName.ADMIN:
             actor_role = self.role_repo.get_by_id(actor.role_id)
-            if actor_role is None or actor_role.name != RoleName.ADMIN:
+            if (
+                actor_role is None
+                or Permission.ROLE_ASSIGN not in actor_role.permission_names()
+            ):
                 raise AuthorizationError(Permission.ROLE_ASSIGN)
         return role
 

@@ -166,7 +166,7 @@ class TestEmployeeRepository:
         self, employee_repo: EmployeeRepository, sample_employee: FullTimeEmployee
     ) -> None:
         """Test that soft-deleted employees are excluded from queries."""
-        employee_repo.soft_delete(sample_employee)
+        employee_repo.soft_delete(sample_employee, str(sample_employee.id))
         result = employee_repo.get_by_email("john.doe@example.com")
         assert result is None
 
@@ -175,9 +175,23 @@ class TestEmployeeRepository:
     ) -> None:
         """Test that soft delete sets the deleted_at timestamp."""
         before_delete = sample_employee.deleted_at
-        result = employee_repo.soft_delete(sample_employee)
+        result = employee_repo.soft_delete(sample_employee, str(sample_employee.id))
         assert result.deleted_at is not None
         assert result.deleted_at > before_delete if before_delete else True
+        assert result.deleted_by_id == str(sample_employee.id)
+
+    def test_restore_returns_employee_to_queries(
+        self, employee_repo: EmployeeRepository, sample_employee: FullTimeEmployee
+    ) -> None:
+        """A restored employee is found again and loses its deletion marks."""
+        employee_repo.soft_delete(sample_employee, str(sample_employee.id))
+        deleted = employee_repo.get_deleted_by_id(str(sample_employee.id))
+        assert deleted is not None
+
+        employee_repo.restore(deleted)
+
+        assert employee_repo.get_by_email(sample_employee.email) is not None
+        assert employee_repo.get_deleted_by_id(str(sample_employee.id)) is None
 
     def test_search_by_department(
         self,

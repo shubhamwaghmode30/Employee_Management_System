@@ -14,9 +14,14 @@ from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
 from app.schemas.employee import (
+    DeletedEmployeeSummary,
+    EmailAvailabilityRequest,
+    EmailAvailabilityResponse,
     EmployeeCreate,
     EmployeeRead,
+    EmployeeSummary,
     EmployeeUpdate,
+    PaginatedDeletedEmployees,
     PaginatedEmployees,
 )
 from app.schemas.employee_stats import EmployeeStats
@@ -57,7 +62,7 @@ def list_employees(
     )
 
     return PaginatedEmployees(
-        items=[EmployeeRead.model_validate(employee) for employee in employees],
+        items=[EmployeeSummary.model_validate(employee) for employee in employees],
         total=total,
         page=page,
         page_size=page_size,
@@ -86,6 +91,51 @@ def get_employee_stats(
 ) -> EmployeeStats:
     """Headcount summary for the dashboard."""
     return employee_service.get_stats()
+
+
+@employee_router.post(
+    "/email-availability",
+    response_model=EmailAvailabilityResponse,
+    dependencies=[Depends(require_permission(Permission.EMPLOYEE_READ))],
+)
+def check_email_availability(
+    data: EmailAvailabilityRequest,
+    employee_service: EmployeeService = Depends(get_employee_service),
+) -> EmailAvailabilityResponse:
+    """Check one email so forms need not send the whole record to find a clash.
+
+    POST keeps the address out of URLs and access logs. Readers can already
+    list emails, so this reveals nothing new to them.
+    """
+    return EmailAvailabilityResponse(
+        is_available=employee_service.is_email_available(
+            data.email, data.excluding_id
+        )
+    )
+
+
+@employee_router.get(
+    "/deleted",
+    response_model=PaginatedDeletedEmployees,
+    dependencies=[Depends(require_permission(Permission.EMPLOYEE_RESTORE))],
+)
+def list_deleted_employees(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    employee_service: EmployeeService = Depends(get_employee_service),
+) -> PaginatedDeletedEmployees:
+    """List soft-deleted employees, most recently deleted first."""
+    employees, total = employee_service.list_deleted_employees(
+        page=page, page_size=page_size
+    )
+    return PaginatedDeletedEmployees(
+        items=[
+            DeletedEmployeeSummary.model_validate(employee) for employee in employees
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @employee_router.post(
@@ -141,3 +191,16 @@ def delete_employee(
     """Soft-delete an employee."""
     employee_service.delete_employee(employee_id, actor)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@employee_router.post(
+    "/{employee_id}/restore",
+    response_model=EmployeeRead,
+    dependencies=[Depends(require_permission(Permission.EMPLOYEE_RESTORE))],
+)
+def restore_employee(
+    employee_id: str,
+    employee_service: EmployeeService = Depends(get_employee_service),
+) -> EmployeeRead:
+    """Undo a soft delete; 409 if a live employee now holds the email or code."""
+    return EmployeeRead.model_validate(employee_service.restore_employee(employee_id))

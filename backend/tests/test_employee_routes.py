@@ -13,8 +13,9 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.core.security import Argon2PasswordHasher
 from app.core.tokens import JwtTokenService
-from app.domain.primitives import EmploymentType, RoleName
+from app.domain.primitives import EmploymentType, Permission, RoleName
 from app.main import app
+from app.models.access_permission import AccessPermission
 from app.models.employee import FullTimeEmployee
 from app.models.role import Role
 
@@ -53,16 +54,9 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def roles(db_session: Session) -> dict[RoleName, Role]:
-    """Create the three system roles."""
-    created = {
-        RoleName.ADMIN: Role(name=RoleName.ADMIN, description="Administrator"),
-        RoleName.HR_MANAGER: Role(name=RoleName.HR_MANAGER, description="HR Manager"),
-        RoleName.EMPLOYEE: Role(name=RoleName.EMPLOYEE, description="Employee"),
-    }
-    db_session.add_all(created.values())
-    db_session.commit()
-    return created
+def roles(default_roles: dict[RoleName, Role]) -> dict[RoleName, Role]:
+    """Create the three system roles with their default grants."""
+    return default_roles
 
 
 def add_staff(
@@ -192,6 +186,9 @@ class TestAnonymous:
             ("DELETE", f"/api/v1/employees/{MISSING_ID}"),
             ("GET", "/api/v1/employees/departments"),
             ("GET", "/api/v1/employees/stats"),
+            ("GET", "/api/v1/employees/deleted"),
+            ("POST", "/api/v1/employees/email-availability"),
+            ("POST", f"/api/v1/employees/{MISSING_ID}/restore"),
             ("GET", "/api/v1/roles"),
             ("POST", "/api/v1/auth/change-password"),
         ],
@@ -273,6 +270,58 @@ class TestAdmin:
         assert body["total"] == 1
         assert body["items"][0]["email"] == "rahul.verma@company.com"
         assert all("password_hash" not in item for item in body["items"])
+
+    def test_list_rows_leave_out_pay_and_audit_fields(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        create_employee(client, admin_headers, full_time_body(roles))
+
+        response = client.get("/api/v1/employees", headers=admin_headers)
+
+        for row in response.json()["items"]:
+            assert set(row).isdisjoint(
+                {"annual_salary", "hourly_rate", "phone", "created_at", "deleted_at"}
+            )
+
+    def test_checks_email_availability(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+        url = "/api/v1/employees/email-availability"
+
+        taken = client.post(
+            url, json={"email": "ARJUN.MEHTA@company.com"}, headers=admin_headers
+        )
+        own = client.post(
+            url,
+            json={"email": "arjun.mehta@company.com", "excluding_id": employee_id},
+            headers=admin_headers,
+        )
+        free = client.post(
+            url, json={"email": "kavya.iyer@company.com"}, headers=admin_headers
+        )
+
+        assert taken.json() == {"is_available": False}
+        assert own.json() == {"is_available": True}
+        assert free.json() == {"is_available": True}
+
+    def test_email_availability_rejects_malformed_email(
+        self, client: TestClient, admin_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/v1/employees/email-availability",
+            json={"email": "arjun.mehta"},
+            headers=admin_headers,
+        )
+
+        assert response.status_code == 422
+        assert_error(response.json(), "VALIDATION_ERROR")
 
     def test_page_size_above_limit_is_rejected(
         self, client: TestClient, admin_headers: dict[str, str]
@@ -478,6 +527,121 @@ class TestHrManager:
         assert response.status_code == 403
         assert_error(response.json(), "FORBIDDEN")
 
+
+class TestSoftDeleteRecovery:
+    def test_admin_lists_and_restores_deleted_employee(
+        self,
+        client: TestClient,
+        admin: FullTimeEmployee,
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+        client.delete(f"/api/v1/employees/{employee_id}", headers=admin_headers)
+
+        listed = client.get("/api/v1/employees/deleted", headers=admin_headers)
+        assert listed.status_code == 200
+        [row] = listed.json()["items"]
+        assert row["id"] == employee_id
+        assert row["deleted_by_id"] == str(admin.id)
+        assert "annual_salary" not in row
+
+        restored = client.post(
+            f"/api/v1/employees/{employee_id}/restore", headers=admin_headers
+        )
+        assert restored.status_code == 200
+        assert restored.json()["deleted_at"] is None
+
+        fetched = client.get(f"/api/v1/employees/{employee_id}", headers=admin_headers)
+        assert fetched.status_code == 200
+
+    def test_restore_conflicts_with_rehired_email(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+        client.delete(f"/api/v1/employees/{employee_id}", headers=admin_headers)
+        create_employee(
+            client, admin_headers, full_time_body(roles) | {"employee_code": "ENG002"}
+        )
+
+        response = client.post(
+            f"/api/v1/employees/{employee_id}/restore", headers=admin_headers
+        )
+
+        assert response.status_code == 409
+        assert_error(response.json(), "DUPLICATE_EMAIL")
+
+    def test_restoring_live_employee_returns_404(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+
+        response = client.post(
+            f"/api/v1/employees/{employee_id}/restore", headers=admin_headers
+        )
+
+        assert response.status_code == 404
+        assert_error(response.json(), "NOT_FOUND")
+
+    def test_hr_manager_cannot_see_or_restore_deleted(
+        self,
+        client: TestClient,
+        admin_headers: dict[str, str],
+        hr_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+        client.delete(f"/api/v1/employees/{employee_id}", headers=admin_headers)
+
+        listed = client.get("/api/v1/employees/deleted", headers=hr_headers)
+        restored = client.post(
+            f"/api/v1/employees/{employee_id}/restore", headers=hr_headers
+        )
+
+        assert listed.status_code == 403
+        assert restored.status_code == 403
+
+class TestDatabaseGrants:
+    def test_granting_delete_in_database_takes_effect(
+        self,
+        client: TestClient,
+        db_session: Session,
+        hr_headers: dict[str, str],
+        admin_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        employee_id = create_employee(client, admin_headers, full_time_body(roles))
+        delete_permission = db_session.get(AccessPermission, Permission.EMPLOYEE_DELETE)
+        assert delete_permission is not None
+        roles[RoleName.HR_MANAGER].permissions.append(delete_permission)
+        db_session.commit()
+
+        response = client.delete(
+            f"/api/v1/employees/{employee_id}", headers=hr_headers
+        )
+
+        assert response.status_code == 204
+
+    def test_revoking_read_in_database_takes_effect(
+        self,
+        client: TestClient,
+        db_session: Session,
+        employee_headers: dict[str, str],
+        roles: dict[RoleName, Role],
+    ) -> None:
+        roles[RoleName.EMPLOYEE].permissions.clear()
+        db_session.commit()
+
+        response = client.get("/api/v1/employees", headers=employee_headers)
+
+        assert response.status_code == 403
+        assert_error(response.json(), "FORBIDDEN")
 
 class TestEmployeeRole:
     def test_can_read(

@@ -12,7 +12,7 @@ from app.api.dependencies import (
 from app.api.employee import get_employee_service
 from app.core.security import PasswordHasher
 from app.core.tokens import TokenService
-from app.domain.primitives import AuthenticationError, InvalidTokenError, RoleName
+from app.domain.primitives import AuthenticationError, InvalidTokenError
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.role import RoleRepository
@@ -101,27 +101,7 @@ def get_current_user(
             detail="Invalid user configuration",
         )
 
-    from app.domain.primitives import (
-        AdminPolicy,
-        EmployeePolicy,
-        HrManagerPolicy,
-    )
-
-    policy_map: dict[RoleName, type] = {
-        RoleName.ADMIN: AdminPolicy,
-        RoleName.HR_MANAGER: HrManagerPolicy,
-        RoleName.EMPLOYEE: EmployeePolicy,
-    }
-
-    policy_class = policy_map.get(role.name)
-    if not policy_class:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Invalid user configuration",
-        )
-
-    policy = policy_class()
-    permissions = sorted(p.name for p in policy.permissions())
+    permissions = sorted(permission.value for permission in role.permission_names())
 
     return CurrentUserResponse(
         id=str(current_employee.id),

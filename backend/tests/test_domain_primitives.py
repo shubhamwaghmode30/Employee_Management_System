@@ -1,13 +1,10 @@
 """Unit tests for domain primitives."""
 
 from app.domain.primitives import (
-    AdminPolicy,
     AuthorizationError,
     DuplicateEmailError,
-    EmployeePolicy,
     EmploymentType,
     EntityNotFoundError,
-    HrManagerPolicy,
     Permission,
     RoleName,
 )
@@ -47,42 +44,6 @@ class TestPermission:
 
     def test_role_assign_value(self) -> None:
         assert Permission.ROLE_ASSIGN == "ROLE_ASSIGN"
-
-
-class TestAdminPolicy:
-    def test_has_all_permissions(self) -> None:
-        policy = AdminPolicy()
-        permissions = policy.permissions()
-        assert Permission.EMPLOYEE_READ in permissions
-        assert Permission.EMPLOYEE_CREATE in permissions
-        assert Permission.EMPLOYEE_UPDATE in permissions
-        assert Permission.EMPLOYEE_DELETE in permissions
-        assert Permission.ROLE_ASSIGN in permissions
-        assert len(permissions) == 5
-
-
-class TestHrManagerPolicy:
-    def test_has_read_create_update_permissions(self) -> None:
-        policy = HrManagerPolicy()
-        permissions = policy.permissions()
-        assert Permission.EMPLOYEE_READ in permissions
-        assert Permission.EMPLOYEE_CREATE in permissions
-        assert Permission.EMPLOYEE_UPDATE in permissions
-        assert Permission.EMPLOYEE_DELETE not in permissions
-        assert Permission.ROLE_ASSIGN not in permissions
-        assert len(permissions) == 3
-
-
-class TestEmployeePolicy:
-    def test_has_read_only_permission(self) -> None:
-        policy = EmployeePolicy()
-        permissions = policy.permissions()
-        assert Permission.EMPLOYEE_READ in permissions
-        assert Permission.EMPLOYEE_CREATE not in permissions
-        assert Permission.EMPLOYEE_UPDATE not in permissions
-        assert Permission.EMPLOYEE_DELETE not in permissions
-        assert Permission.ROLE_ASSIGN not in permissions
-        assert len(permissions) == 1
 
 
 class TestEntityNotFoundError:

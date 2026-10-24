@@ -27,20 +27,53 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         return self.session.scalars(stmt).first()
 
     def is_email_taken(self, email: str, excluding_id: str | None = None) -> bool:
-        """Check email uniqueness, counting soft-deleted rows.
+        """Check email uniqueness among live rows, ignoring case.
 
-        Soft-deleted rows still hold the database unique constraint, so they
-        must block reuse to avoid an integrity error on insert.
+        Soft-deleted rows are left out: the database only enforces uniqueness
+        for live rows, so their addresses may be reused.
         """
-        stmt = select(Employee.id).where(func.lower(Employee.email) == email.lower())
+        stmt = select(Employee.id).where(
+            Employee.deleted_at.is_(None),
+            func.lower(Employee.email) == email.lower(),
+        )
         if excluding_id is not None:
             stmt = stmt.where(Employee.id != excluding_id)
         return self.session.scalars(stmt).first() is not None
 
-    def is_employee_code_taken(self, employee_code: str) -> bool:
-        """Check employee code uniqueness, counting soft-deleted rows."""
-        stmt = select(Employee.id).where(Employee.employee_code == employee_code)
+    def is_employee_code_taken(
+        self, employee_code: str, excluding_id: str | None = None
+    ) -> bool:
+        """Check employee code uniqueness among live rows."""
+        stmt = select(Employee.id).where(
+            Employee.deleted_at.is_(None),
+            Employee.employee_code == employee_code,
+        )
+        if excluding_id is not None:
+            stmt = stmt.where(Employee.id != excluding_id)
         return self.session.scalars(stmt).first() is not None
+
+    def get_deleted_by_id(self, id: str) -> Employee | None:
+        """Retrieve a soft-deleted employee by ID."""
+        stmt = (
+            super()
+            ._base_query()
+            .where(Employee.id == id, Employee.deleted_at.is_not(None))
+        )
+        return self.session.scalars(stmt).first()
+
+    def search_deleted(
+        self, page: int = 1, page_size: int = 10
+    ) -> tuple[list[Employee], int]:
+        """Page through soft-deleted employees, most recently deleted first."""
+        stmt = super()._base_query().where(Employee.deleted_at.is_not(None))
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = int(self.session.scalar(count_stmt) or 0)
+        stmt = (
+            stmt.order_by(Employee.deleted_at.desc(), Employee.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return list(self.session.scalars(stmt)), total
 
     def list_departments(self) -> list[str]:
         """Return distinct departments of non-deleted employees, sorted."""
@@ -161,9 +194,18 @@ class EmployeeRepository(SqlAlchemyRepository[Employee]):
         results = list(self.session.scalars(stmt))
         return results, total
 
-    def soft_delete(self, employee: Employee) -> Employee:
-        """Soft delete an employee by setting deleted_at timestamp."""
+    def soft_delete(self, employee: Employee, deleted_by_id: str) -> Employee:
+        """Soft delete an employee, recording when and by whom."""
         employee.deleted_at = datetime.now(UTC)
+        employee.deleted_by_id = deleted_by_id
+        self.session.flush()
+        self.session.refresh(employee)
+        return employee
+
+    def restore(self, employee: Employee) -> Employee:
+        """Bring a soft-deleted employee back into the live set."""
+        employee.deleted_at = None
+        employee.deleted_by_id = None
         self.session.flush()
         self.session.refresh(employee)
         return employee

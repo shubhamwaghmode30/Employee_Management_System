@@ -46,13 +46,12 @@ def client(db_session: Session) -> TestClient:
 
 
 @pytest.fixture
-def employee(db_session: Session) -> FullTimeEmployee:
+def employee(
+    db_session: Session, default_roles: dict[RoleName, Role]
+) -> FullTimeEmployee:
     """Create a test employee."""
     hasher = Argon2PasswordHasher()
-    role = Role(name=RoleName.EMPLOYEE, description="Employee")
-    db_session.add(role)
-    db_session.commit()
-    db_session.refresh(role)
+    role = default_roles[RoleName.EMPLOYEE]
 
     employee = FullTimeEmployee(
         employee_code="EMP001",
@@ -136,7 +135,7 @@ def test_get_current_user_authenticated(
     assert data["first_name"] == "John"
     assert data["last_name"] == "Doe"
     assert data["role"] == "EMPLOYEE"
-    assert isinstance(data["permissions"], list)
+    assert data["permissions"] == ["EMPLOYEE_READ"]
 
 
 def test_get_current_user_unauthenticated(client: TestClient) -> None:

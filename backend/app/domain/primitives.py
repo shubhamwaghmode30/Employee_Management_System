@@ -1,6 +1,8 @@
-"""Domain enums, role policies, and domain exceptions."""
+"""Domain enums and domain exceptions.
 
-from abc import ABC, abstractmethod
+Which role holds which permission lives in the role_permissions table.
+"""
+
 from enum import StrEnum
 
 
@@ -26,51 +28,8 @@ class Permission(StrEnum):
     EMPLOYEE_CREATE = "EMPLOYEE_CREATE"
     EMPLOYEE_UPDATE = "EMPLOYEE_UPDATE"
     EMPLOYEE_DELETE = "EMPLOYEE_DELETE"
+    EMPLOYEE_RESTORE = "EMPLOYEE_RESTORE"
     ROLE_ASSIGN = "ROLE_ASSIGN"
-
-
-class RolePolicy(ABC):
-    """Abstract base for role-based permission policies."""
-
-    @abstractmethod
-    def permissions(self) -> frozenset[Permission]:
-        """Return the set of permissions granted by this role."""
-        raise NotImplementedError
-
-
-class AdminPolicy(RolePolicy):
-    """Admin role has all permissions."""
-
-    def permissions(self) -> frozenset[Permission]:
-        return frozenset(
-            {
-                Permission.EMPLOYEE_READ,
-                Permission.EMPLOYEE_CREATE,
-                Permission.EMPLOYEE_UPDATE,
-                Permission.EMPLOYEE_DELETE,
-                Permission.ROLE_ASSIGN,
-            }
-        )
-
-
-class HrManagerPolicy(RolePolicy):
-    """HR Manager can read, create, and update employees."""
-
-    def permissions(self) -> frozenset[Permission]:
-        return frozenset(
-            {
-                Permission.EMPLOYEE_READ,
-                Permission.EMPLOYEE_CREATE,
-                Permission.EMPLOYEE_UPDATE,
-            }
-        )
-
-
-class EmployeePolicy(RolePolicy):
-    """Employee role has read-only access."""
-
-    def permissions(self) -> frozenset[Permission]:
-        return frozenset({Permission.EMPLOYEE_READ})
 
 
 class EntityNotFoundError(Exception):
