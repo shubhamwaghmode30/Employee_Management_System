@@ -93,11 +93,23 @@ Edit `.env` to set the `DATABASE_URL` and other variables. The default uses SQLi
 
 ### Database Setup
 
-Run the Alembic migration to create the database schema:
+Run the Alembic migrations. They create the schema and the reference data: the three roles, the permission catalogue and the role-to-permission grants (`roles`, `permissions`, `role_permissions` tables).
 
 ```bash
 alembic upgrade head
 ```
+
+Then seed the bootstrap admin (and optional sample employees). The seed script no longer creates roles; it fails with a hint if the migrations have not run.
+
+```bash
+python scripts/seed.py
+```
+
+### Access control and soft delete
+
+- Permissions are read from `role_permissions` on every request, so a grant can be changed in the database without a code release. `GET /auth/me` returns the signed-in user's current permissions.
+- Deleting an employee is a soft delete: `deleted_at` and `deleted_by_id` are recorded and the row is kept. Email and employee code are unique among live rows only. Users with `EMPLOYEE_RESTORE` (ADMIN by default) can list deleted employees at `GET /employees/deleted` and restore them with `POST /employees/{id}/restore`; a restore is refused with 409 if a live employee now uses the same email or code.
+- List endpoints return summary rows without pay, contact or audit fields. `POST /employees/email-availability` checks one email without sending a whole form.
 
 ### Running the Application
 
